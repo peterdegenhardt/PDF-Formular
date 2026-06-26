@@ -312,37 +312,28 @@ class App:
                 pdf_right = self.ox + nw
                 pdf_bottom = self.oy + nh
                 # Vertikale Hilfslinien (alle ruler_step Pixel im PDF)
-                x0 = self.ox
-                while x0 < pdf_right:
-                    rx = x0 - self.ox
-                    if rx % (self.ruler_step * self.zoom) < 1:
-                        self.cv.create_line(x0, self.oy, x0, pdf_bottom,
-                                           fill="#585b70", width=1, tags="ruler")
-                    x0 += 1
+                for x0 in range(self.ox, int(pdf_right), int(rl)):
+                    self.cv.create_line(x0, self.oy, x0, pdf_bottom,
+                                       fill="#45475a", width=1, tags="ruler")
                 # Horizontale Hilfslinien
-                y0 = self.oy
-                while y0 < pdf_bottom:
-                    ry = y0 - self.oy
-                    if ry % (self.ruler_step * self.zoom) < 1:
-                        self.cv.create_line(self.ox, y0, pdf_right, y0,
-                                           fill="#585b70", width=1, tags="ruler")
-                    y0 += 1
-                # Rand-Markierungen (alle 10er)
+                for y0 in range(self.oy, int(pdf_bottom), int(rl)):
+                    self.cv.create_line(self.ox, y0, pdf_right, y0,
+                                       fill="#45475a", width=1, tags="ruler")
+                # Rand-Markierungen (oben und links)
                 st = self.ruler_step // 5  # 10px bei step=50
-                for i in range(0, int(nw / st / self.zoom) + 1):
-                    px = i * st * self.zoom
+                step_px = st * self.zoom
+                for i in range(0, int(nw / step_px) + 1):
+                    px = i * step_px
                     if i % 5 == 0:
-                        # Großer Strich (volle 50px)
-                        self.cv.create_line(self.ox + px, self.oy, self.ox + px, self.oy + 10,
+                        self.cv.create_line(self.ox + px, self.oy, self.ox + px, self.oy + 8,
                                            fill=C["text"], width=1, tags="ruler")
-                        self.cv.create_line(self.ox, self.oy + px, self.ox + 10, self.oy + px,
+                        self.cv.create_line(self.ox, self.oy + px, self.ox + 8, self.oy + px,
                                            fill=C["text"], width=1, tags="ruler")
                     elif i % 5 == 2:
-                        # Mittlerer Strich (25px)
-                        self.cv.create_line(self.ox + px, self.oy, self.ox + px, self.oy + 6,
-                                           fill=C["text"], width=1, tags="ruler")
-                        self.cv.create_line(self.ox, self.oy + px, self.ox + 6, self.oy + px,
-                                           fill=C["text"], width=1, tags="ruler")
+                        self.cv.create_line(self.ox + px, self.oy, self.ox + px, self.oy + 4,
+                                           fill=C["status"], width=1, tags="ruler")
+                        self.cv.create_line(self.ox, self.oy + px, self.ox + 4, self.oy + px,
+                                           fill=C["status"], width=1, tags="ruler")
 
             for f in self.fields: self._draw(f)
 
@@ -639,14 +630,6 @@ class App:
         
         if not result["name"]: return None
         return (result["name"], result["type"], result["group"])
-
-    def _right(self, e):
-        if self.mode != "edit": return
-        px, py = self._ic(e); f = self._find(px,py)
-        if f and messagebox.askyesno("Löschen", f"'{f.label}' löschen?"):
-            self.fields.remove(f)
-            if self.selected == f: self.selected = None
-            self._render(); self._status()
 
     # ─── Export ───────────────────────────────────────────────
     def _build_pdf(self) -> str:
