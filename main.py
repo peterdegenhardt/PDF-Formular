@@ -104,11 +104,11 @@ class App:
         self._build()
         self._set_mode("fill")
 
-    def _btn(self, p, t, c, bg, s=tk.LEFT, fg="#11111b", w=7):
-        b = tk.Button(p, text=t, font=("Segoe UI",10,"bold"), bg=bg, fg=fg,
+    def _btn(self, p, t, c, bg, s=tk.LEFT, fg="#11111b", w=0):
+        b = tk.Button(p, text=t, font=("Segoe UI",9,"bold"), bg=bg, fg=fg,
                      activebackground=C["accent"], activeforeground="#11111b",
-                     bd=0, pady=5, padx=8, width=w, cursor="hand2", command=c)
-        b.pack(side=s, padx=2); return b
+                     relief=tk.RAISED, bd=2, pady=4, padx=6, width=w, cursor="hand2", command=c)
+        b.pack(side=s, padx=1); return b
 
     def _build(self):
         self.root.configure(bg=C["bg"])
@@ -126,39 +126,39 @@ class App:
         fm.add_separator()
         fm.add_command(label="Beenden", command=self.root.quit)
 
-        tb = tk.Frame(self.root, bg=C["bg"], height=42)
-        tb.pack(fill=tk.X, padx=4, pady=(4,0))
+        tb = tk.Frame(self.root, bg=C["bg"], height=38)
+        tb.pack(fill=tk.X, padx=3, pady=(3,0))
 
-        # Gruppe Datei
-        self._btn(tb, "📂 PDF", self._open_pdf, C["accent"])
-        self._btn(tb, "📋 Vorlage", self._load_template, C["cyan"])
-        tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=4, fill=tk.Y, pady=4)
+        # --- Datei ---
+        self._btn(tb, "PDF öffnen", self._open_pdf, C["accent"])
+        self._btn(tb, "Vorlage öffnen", self._load_template, C["cyan"])
+        tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=3, fill=tk.Y, pady=3)
 
-        # Gruppe Modus
-        self.btn_fill = self._btn(tb, "✏️ Ausfüllen", lambda: self._set_mode("fill"), C["green"], w=9)
-        self.btn_edit = self._btn(tb, "🔧 Editor", lambda: self._set_mode("edit"), C["status"], w=8)
-        tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=4, fill=tk.Y, pady=4)
+        # --- Modus ---
+        self.btn_fill = self._btn(tb, "Ausfüllen", lambda: self._set_mode("fill"), C["green"])
+        self.btn_edit = self._btn(tb, "Editor", lambda: self._set_mode("edit"), C["status"])
+        tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=3, fill=tk.Y, pady=3)
 
-        # Gruppe Rahmen/Grid
-        self.btn_frame = self._btn(tb, "⬜ Rahmen", self._toggle_frames, C["yellow"], w=7)
-        self._btn(tb, "⬜ Höhe", self._set_height_dialog, C["yellow"], w=6)
-        self._btn(tb, "▦ Raster", self._set_grid_dialog, C["yellow"], w=6)
-        tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=4, fill=tk.Y, pady=4)
+        # --- Rahmen/Höhe/Raster ---
+        self.btn_frame = self._btn(tb, "Rahmen", self._toggle_frames, C["yellow"])
+        self._btn(tb, "Höhe", self._set_height_dialog, C["yellow"])
+        self._btn(tb, "Raster", self._set_grid_dialog, C["yellow"])
+        tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=3, fill=tk.Y, pady=3)
 
-        # Gruppe Export
-        self._btn(tb, "💾 Vorlage", self._save_template, C["cyan"], w=8)
-        self._btn(tb, "🖨️ Drucken", self._print_pdf, C["yellow"], w=8)
-        self._btn(tb, "💾 PDF", self._save_pdf, C["green"], w=7)
-        tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=4, fill=tk.Y, pady=4)
+        # --- Export ---
+        self._btn(tb, "Vorlage speichern", self._save_template, C["cyan"])
+        self._btn(tb, "Drucken", self._print_pdf, C["yellow"])
+        self._btn(tb, "PDF speichern", self._save_pdf, C["green"])
+        tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=3, fill=tk.Y, pady=3)
 
-        # Gruppe Zoom
-        self._btn(tb, "🔍−", lambda: self._do_zoom(0.8), C["status"], fg=C["text"], w=3)
-        self._btn(tb, "🔍+", lambda: self._do_zoom(1.25), C["status"], fg=C["text"], w=3)
-        self._btn(tb, "1:1", self._zoom_reset, C["status"], fg=C["text"], w=4)
-        tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=4, fill=tk.Y, pady=4)
+        # --- Zoom ---
+        self._btn(tb, "−", lambda: self._do_zoom(0.8), C["status"], fg=C["text"])
+        self._btn(tb, "+", lambda: self._do_zoom(1.25), C["status"], fg=C["text"])
+        self._btn(tb, "1:1", self._zoom_reset, C["status"], fg=C["text"])
+        tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=3, fill=tk.Y, pady=3)
 
-        # Gruppe Reset
-        self._btn(tb, "🔄 Zurücksetzen", self._reset, C["red"], w=10)
+        # --- Reset ---
+        self._btn(tb, "Zurücksetzen", self._reset, C["red"])
 
         self.mf = tk.Frame(self.root, bg=C["canvas"])
         self.mf.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
