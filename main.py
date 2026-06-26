@@ -86,7 +86,7 @@ class App:
 
         self.font_size = 11
         self.line_height = int(self.font_size * SCALE)
-        self.frame_height = self.line_height  # Rahmenhöhe in Pixeln, einstellbar
+        self.frame_height = 80  # Rahmenhöhe in Pixeln, Voreinstellung 80
         self.export_font = get_font(self.font_size)
 
         self.dragging = False
@@ -99,6 +99,8 @@ class App:
         self.active_field = None
         self.typing = False
         self.show_frames = True  # Rahmen ein/aus
+        self.show_ruler = True  # Lineal ein/aus
+        self.ruler_step = 50  # Pixelabstand Lineal-Striche
         self.grid_size = 15  # Einrast-Raster, jetzt einstellbar
 
         self._build()
@@ -139,8 +141,9 @@ class App:
         self.btn_edit = self._btn(tb, "Editor", lambda: self._set_mode("edit"), C["status"])
         tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=3, fill=tk.Y, pady=3)
 
-        # --- Rahmen/Höhe/Raster ---
+        # --- Rahmen/Höhe/Raster/Lineal ---
         self.btn_frame = self._btn(tb, "Rahmen", self._toggle_frames, C["yellow"])
+        self.btn_ruler = self._btn(tb, "Lineal", self._toggle_ruler, C["yellow"])
         self._btn(tb, "Höhe", self._set_height_dialog, C["yellow"])
         self._btn(tb, "Raster", self._set_grid_dialog, C["yellow"])
         tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=3, fill=tk.Y, pady=3)
@@ -208,7 +211,13 @@ class App:
 
     def _toggle_frames(self):
         self.show_frames = not self.show_frames
-        self.btn_frame.configure(text="🟩 Rahmen" if self.show_frames else "⬜ Rahmen")
+        self.btn_frame.configure(bg=C["green"] if self.show_frames else C["status"])
+        self._render()
+        self._status()
+
+    def _toggle_ruler(self):
+        self.show_ruler = not self.show_ruler
+        self.btn_ruler.configure(bg=C["green"] if self.show_ruler else C["status"])
         self._render()
         self._status()
 
@@ -296,6 +305,44 @@ class App:
             base_ox, base_oy = (cw-nw)//2, (ch-nh)//2
             self.ox, self.oy = base_ox + self.pan_ox, base_oy + self.pan_oy
             self.cv.create_image(self.ox, self.oy, anchor=tk.NW, image=self.pdf_tk)
+
+            # Lineal (Hilfslinien)
+            if self.show_ruler and self.mode == "edit":
+                rl = self.ruler_step * self.zoom
+                pdf_right = self.ox + nw
+                pdf_bottom = self.oy + nh
+                # Vertikale Hilfslinien (alle ruler_step Pixel im PDF)
+                x0 = self.ox
+                while x0 < pdf_right:
+                    rx = x0 - self.ox
+                    if rx % (self.ruler_step * self.zoom) < 1:
+                        self.cv.create_line(x0, self.oy, x0, pdf_bottom,
+                                           fill="#585b70", width=1, tags="ruler")
+                    x0 += 1
+                # Horizontale Hilfslinien
+                y0 = self.oy
+                while y0 < pdf_bottom:
+                    ry = y0 - self.oy
+                    if ry % (self.ruler_step * self.zoom) < 1:
+                        self.cv.create_line(self.ox, y0, pdf_right, y0,
+                                           fill="#585b70", width=1, tags="ruler")
+                    y0 += 1
+                # Rand-Markierungen (alle 10er)
+                st = self.ruler_step // 5  # 10px bei step=50
+                for i in range(0, int(nw / st / self.zoom) + 1):
+                    px = i * st * self.zoom
+                    if i % 5 == 0:
+                        # Großer Strich (volle 50px)
+                        self.cv.create_line(self.ox + px, self.oy, self.ox + px, self.oy + 10,
+                                           fill=C["text"], width=1, tags="ruler")
+                        self.cv.create_line(self.ox, self.oy + px, self.ox + 10, self.oy + px,
+                                           fill=C["text"], width=1, tags="ruler")
+                    elif i % 5 == 2:
+                        # Mittlerer Strich (25px)
+                        self.cv.create_line(self.ox + px, self.oy, self.ox + px, self.oy + 6,
+                                           fill=C["text"], width=1, tags="ruler")
+                        self.cv.create_line(self.ox, self.oy + px, self.ox + 6, self.oy + px,
+                                           fill=C["text"], width=1, tags="ruler")
 
             for f in self.fields: self._draw(f)
 
@@ -389,11 +436,10 @@ class App:
                 self.dx, self.dy = px - f.x1, py - f.y1
                 self._render(); self._status()
             else:
-                # erst mal nur merken — kein dragging bis Bewegung
-                self.drag_field = None  # None = neues Feld
+                # Im Edit-Modus: Linksklick = neues Feld aufziehen
+                self.drag_field = None
                 self.dx, self.dy = px, py
-                self.dragging = False  # False bis Maus sich bewegt
-                self._start_drag = False
+                self.dragging = False
         elif self.mode == "fill":
             f = self._find(px,py)
             if f:
@@ -408,10 +454,29 @@ class App:
                         if o.type=="radio" and o.group==f.group: o.value=False
                     f.value = True; self._render(); self._status()
             else:
-                # Hintergrund verschieben (pan)
+                # Fill-Modus: Linksklick = panning
                 self.panning = True
                 self.pan_x, self.pan_y = e.x, e.y
                 self.cv.configure(cursor="fleur")
+
+    def _right(self, e):
+        px, py = self._ic(e); f = self._find(px,py)
+        if self.mode == "edit":
+            if f:
+                if messagebox.askyesno("Löschen", f"'{f.label}' löschen?"):
+                    self.fields.remove(f)
+                    if self.selected == f: self.selected = None
+                    self._render(); self._status()
+            else:
+                # Rechtsklick auf leere Fläche = panning (auch im Edit-Modus)
+                self.panning = True
+                self.pan_x, self.pan_y = e.x, e.y
+                self.cv.configure(cursor="fleur")
+        elif self.mode == "fill":
+            # Im Fill-Modus pannt auch die rechte Maustaste
+            self.panning = True
+            self.pan_x, self.pan_y = e.x, e.y
+            self.cv.configure(cursor="fleur")
 
     def _drag(self, e):
         if self.panning:
