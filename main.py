@@ -178,8 +178,9 @@ class App:
         self.cv.bind("<Button-4>", lambda e: self._do_zoom(1.1))
         self.cv.bind("<Button-5>", lambda e: self._do_zoom(0.9))
         self.cv.bind("<Button-1>", self._click)
-        self.cv.bind("<B1-Motion>", self._drag_newfield)
-        self.cv.bind("<ButtonRelease-1>", self._release_newfield)
+        self.cv.bind("<Control-Button-1>", self._ctrlclick)
+        self.cv.bind("<B1-Motion>", self._b1_motion)
+        self.cv.bind("<ButtonRelease-1>", self._release_b1)
         self.cv.bind("<Button-2>", self._middle_click)
         self.cv.bind("<B2-Motion>", self._middle_drag)
         self.cv.bind("<ButtonRelease-2>", self._middle_release)
@@ -319,11 +320,11 @@ class App:
                 # Vertikale Hilfslinien (alle ruler_step Pixel im PDF)
                 for x0 in range(self.ox, int(pdf_right), int(rl)):
                     self.cv.create_line(x0, self.oy, x0, pdf_bottom,
-                                       fill="#585b70", width=1, dash=(1,3), tags="ruler")
+                                       fill="#45475a", width=1, dash=(1,5), tags="ruler")
                 # Horizontale Hilfslinien
                 for y0 in range(self.oy, int(pdf_bottom), int(rl)):
                     self.cv.create_line(self.ox, y0, pdf_right, y0,
-                                       fill="#585b70", width=1, dash=(1,3), tags="ruler")
+                                       fill="#45475a", width=1, dash=(1,5), tags="ruler")
                 # Rand-Markierungen (oben und links)
                 st = self.ruler_step // 5  # 10px bei step=50
                 step_px = st * self.zoom
@@ -422,12 +423,14 @@ class App:
         self.cv.focus_set()
 
     def _click(self, e):
-        """Linksklick: Edit → neues Feld aufziehen / Fill → auswählen/pan"""
+        """Linksklick ohne Strg: Edit → neues Feld / Fill → auswählen"""
         self._stop_typing()
+        self._drag_mode = None  # noch kein Modus
         self.cv.delete("drag")
         px, py = self._ic(e)
         if self.mode == "edit":
             self._nf_px, self._nf_py = px, py
+            self._drag_mode = "newfield"
         elif self.mode == "fill":
             f = self._find(px, py)
             if f:
@@ -449,58 +452,109 @@ class App:
                     self._render()
                     self._status()
             else:
-                self.panning = True
+                self._drag_mode = "pan"
                 self.pan_x, self.pan_y = e.x, e.y
                 self.cv.configure(cursor="fleur")
 
-    def _drag_newfield(self, e):
-        """Linksklick ziehen: neues Feld im Edit-Modus"""
+    def _ctrlclick(self, e):
+        """Strg+Linksklick: Feld verschieben (Edit)"""
         if self.mode != "edit":
             return
-        px, py = self._ic(e)
-        if abs(px - self._nf_px) < 3 and abs(py - self._nf_py) < 3:
-            return
+        self._stop_typing()
         self.cv.delete("drag")
-        g = self.grid_size
-        x1 = min(self._nf_px, px)
-        y1 = min(self._nf_py, py) // g * g
-        x2 = max(self._nf_px, px)
-        y2 = y1 + self.frame_height
-        z = self.zoom
-        self.cv.create_rectangle(
-            self.ox + int(x1 * z), self.oy + int(y1 * z),
-            self.ox + int(x2 * z), self.oy + int(y2 * z),
-            outline=C["accent"], fill="", width=2, dash=(4, 4), tags="drag"
-        )
-
-    def _release_newfield(self, e):
-        """Linksklick loslassen: neues Feld anlegen (Edit) oder nix"""
-        if self.panning:
-            self.panning = False
-            self.cv.configure(cursor="hand2")
-            self.cv.delete("drag")
-            return
-        self.cv.delete("drag")
-        if self.mode != "edit":
-            return
         px, py = self._ic(e)
-        if abs(px - self._nf_px) < 8 and abs(py - self._nf_py) < 8:
-            return
-        g = self.grid_size
-        y_top = min(self._nf_py, py)
-        y1 = int(y_top) // g * g
-        f = FieldRect(
-            x1=int(min(self._nf_px, px)), y1=y1,
-            x2=int(max(self._nf_px, px)), y2=y1 + self.frame_height,
-            label="", ftype="text"
-        )
-        result = self._field_dialog(f)
-        if result:
-            f.label, f.type, f.group = result
-            self.fields.append(f)
+        f = self._find(px, py)
+        if f:
             self.selected = f
+            self._mv_field = f
+            self._mv_px, self._mv_py = px, py
+            self._mv_dx, self._mv_dy = px - f.x1, py - f.y1
+            self._drag_mode = "move"
             self._render()
             self._status()
+
+    def _b1_motion(self, e):
+        """Button-1 Bewegung: je nach drag_mode"""
+        dm = getattr(self, '_drag_mode', None)
+        if dm == "pan":
+            self.pan_ox += e.x - self.pan_x
+            self.pan_oy += e.y - self.pan_y
+            self.pan_x = e.x
+            self.pan_y = e.y
+            self._render()
+        elif dm == "newfield":
+            if self.mode != "edit":
+                return
+            px, py = self._ic(e)
+            if abs(px - self._nf_px) < 3 and abs(py - self._nf_py) < 3:
+                return
+            self.cv.delete("drag")
+            g = self.grid_size
+            x1 = min(self._nf_px, px)
+            y1 = min(self._nf_py, py) // g * g
+            x2 = max(self._nf_px, px)
+            y2 = y1 + self.frame_height
+            z = self.zoom
+            self.cv.create_rectangle(
+                self.ox + int(x1 * z), self.oy + int(y1 * z),
+                self.ox + int(x2 * z), self.oy + int(y2 * z),
+                outline=C["accent"], fill="", width=2, dash=(4, 4), tags="drag"
+            )
+        elif dm == "move":
+            if not hasattr(self, '_mv_field') or not self._mv_field:
+                return
+            px, py = self._ic(e)
+            if abs(px - self._mv_px) < 2 and abs(py - self._mv_py) < 2:
+                return
+            f = self._mv_field
+            g = self.grid_size
+            nx = int(px - self._mv_dx) // g * g
+            ny = int(py - self._mv_dy) // g * g
+            f.x1 = nx
+            f.y1 = ny
+            f.x2 = nx + f.w
+            f.y2 = ny + f.h
+            self.cv.delete("drag")
+            z = self.zoom
+            self.cv.create_rectangle(
+                self.ox + int(f.x1 * z), self.oy + int(f.y1 * z),
+                self.ox + int(f.x2 * z), self.oy + int(f.y2 * z),
+                outline=C["yellow"], fill="", width=3, dash=(4, 4), tags="drag"
+            )
+            self._render()
+
+    def _release_b1(self, e):
+        """Button-1 loslassen: je nach drag_mode"""
+        dm = getattr(self, '_drag_mode', None)
+        self._drag_mode = None
+        self.cv.delete("drag")
+        if dm == "pan":
+            self.panning = False
+            self.cv.configure(cursor="hand2")
+        elif dm == "newfield" and self.mode == "edit":
+            px, py = self._ic(e)
+            if abs(px - self._nf_px) < 8 and abs(py - self._nf_py) < 8:
+                return
+            g = self.grid_size
+            y_top = min(self._nf_py, py)
+            y1 = int(y_top) // g * g
+            f = FieldRect(
+                x1=int(min(self._nf_px, px)), y1=y1,
+                x2=int(max(self._nf_px, px)), y2=y1 + self.frame_height,
+                label="", ftype="text"
+            )
+            result = self._field_dialog(f)
+            if result:
+                f.label, f.type, f.group = result
+                self.fields.append(f)
+                self.selected = f
+                self._render()
+                self._status()
+        elif dm == "move":
+            if hasattr(self, '_mv_field') and self._mv_field:
+                self._mv_field = None
+                self._render()
+                self._status()
 
     def _middle_click(self, e):
         """Mittlere Maustaste: Feld verschieben (Edit) oder nix"""
