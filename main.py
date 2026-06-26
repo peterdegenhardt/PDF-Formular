@@ -314,11 +314,11 @@ class App:
                 # Vertikale Hilfslinien (alle ruler_step Pixel im PDF)
                 for x0 in range(self.ox, int(pdf_right), int(rl)):
                     self.cv.create_line(x0, self.oy, x0, pdf_bottom,
-                                       fill="#45475a", width=1, tags="ruler")
+                                       fill="#6c7086", width=1, dash=(2,4), tags="ruler")
                 # Horizontale Hilfslinien
                 for y0 in range(self.oy, int(pdf_bottom), int(rl)):
                     self.cv.create_line(self.ox, y0, pdf_right, y0,
-                                       fill="#45475a", width=1, tags="ruler")
+                                       fill="#6c7086", width=1, dash=(2,4), tags="ruler")
                 # Rand-Markierungen (oben und links)
                 st = self.ruler_step // 5  # 10px bei step=50
                 step_px = st * self.zoom
@@ -517,8 +517,8 @@ class App:
             self.panning = False
             self.cv.configure(cursor="hand2")
             return
-        if not self.dragging: return
-        self.dragging = False; self.cv.delete("drag")
+        self.dragging = False
+        self.cv.delete("drag")
         if self.drag_field:
             # Feld wurde verschoben — fertig
             self.drag_field = None
