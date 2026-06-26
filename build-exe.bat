@@ -51,7 +51,10 @@ if %errorlevel% neq 0 (
 echo.
 echo Loesche alte Build-Artefakte...
 if exist build rmdir /s /q build
-if exist dist rmdir /s /q dist
+REM dist löschen – ggf. mit force für Permission-Konflikte
+if exist dist\PDF-Formular.exe del /f /q dist\PDF-Formular.exe >nul 2>&1
+if exist dist rmdir /s /q dist 2>nul
+if exist *.spec del /f /q *.spec >nul 2>&1
 
 echo Baue EXE...
 pyinstaller --noconfirm --onefile --windowed ^
