@@ -314,11 +314,11 @@ class App:
                 # Vertikale Hilfslinien (alle ruler_step Pixel im PDF)
                 for x0 in range(self.ox, int(pdf_right), int(rl)):
                     self.cv.create_line(x0, self.oy, x0, pdf_bottom,
-                                       fill="#6c7086", width=1, dash=(2,4), tags="ruler")
+                                       fill="#585b70", width=1, dash=(1,3), tags="ruler")
                 # Horizontale Hilfslinien
                 for y0 in range(self.oy, int(pdf_bottom), int(rl)):
                     self.cv.create_line(self.ox, y0, pdf_right, y0,
-                                       fill="#6c7086", width=1, dash=(2,4), tags="ruler")
+                                       fill="#585b70", width=1, dash=(1,3), tags="ruler")
                 # Rand-Markierungen (oben und links)
                 st = self.ruler_step // 5  # 10px bei step=50
                 step_px = st * self.zoom
@@ -417,20 +417,21 @@ class App:
         self.cv.focus_set()
 
     def _click(self, e):
-        self._stop_typing(); px, py = self._ic(e)
+        self._stop_typing()
+        # Immer erst mal alles zurücksetzen
+        self.dragging = False
+        self.drag_field = None
+        self.panning = False
+        px, py = self._ic(e)
         if self.mode == "edit":
             f = self._find(px,py)
             if f:
                 self.selected = f
-                self.dragging = True
                 self.drag_field = f  # Feld verschieben
                 self.dx, self.dy = px - f.x1, py - f.y1
                 self._render(); self._status()
             else:
-                # Im Edit-Modus: Linksklick = neues Feld aufziehen
-                self.drag_field = None
                 self.dx, self.dy = px, py
-                self.dragging = False
         elif self.mode == "fill":
             f = self._find(px,py)
             if f:
@@ -445,7 +446,6 @@ class App:
                         if o.type=="radio" and o.group==f.group: o.value=False
                     f.value = True; self._render(); self._status()
             else:
-                # Fill-Modus: Linksklick = panning
                 self.panning = True
                 self.pan_x, self.pan_y = e.x, e.y
                 self.cv.configure(cursor="fleur")
@@ -479,8 +479,13 @@ class App:
             self._render()
             return
         if self.drag_field:
-            # Bestehendes Feld verschieben
-            self.dragging = True
+            # Bestehendes Feld verschieben — Bewegung aktiviert dragging
+            if not self.dragging:
+                px, py = self._ic(e)
+                if abs(px - self.dx) > 3 or abs(py - self.dy) > 3:
+                    self.dragging = True
+            if not self.dragging:
+                return
             px, py = self._ic(e)
             f = self.drag_field
             GRID = self.grid_size
@@ -496,7 +501,7 @@ class App:
                                      outline=C["yellow"],fill="",width=3,dash=(4,4),tags="drag")
             self._render()
             return
-        # Neues Feld — erst bei Bewegung aktivieren
+        # Neues Feld aufziehen — erst bei Bewegung aktivieren
         if not self.dragging:
             px, py = self._ic(e)
             if abs(px - self.dx) > 3 or abs(py - self.dy) > 3:
@@ -517,13 +522,16 @@ class App:
             self.panning = False
             self.cv.configure(cursor="hand2")
             return
-        self.dragging = False
         self.cv.delete("drag")
-        if self.drag_field:
+        if self.drag_field and self.dragging:
             # Feld wurde verschoben — fertig
             self.drag_field = None
+            self.dragging = False
             self._render(); self._status()
             return
+        # Reset für nächstes Mal
+        self.drag_field = None
+        self.dragging = False
         px, py = self._ic(e)
         if abs(px-self.dx)<10 or abs(py-self.dy)<10: return
         GRID = self.grid_size  # einstellbares Raster
