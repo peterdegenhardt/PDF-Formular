@@ -99,15 +99,16 @@ class App:
         self.active_field = None
         self.typing = False
         self.show_frames = True  # Rahmen ein/aus
+        self.grid_size = 15  # Einrast-Raster, jetzt einstellbar
 
         self._build()
         self._set_mode("fill")
 
-    def _btn(self, p, t, c, bg, s=tk.LEFT, fg="#11111b"):
-        b = tk.Button(p, text=t, font=("Segoe UI",9,"bold"), bg=bg, fg=fg,
+    def _btn(self, p, t, c, bg, s=tk.LEFT, fg="#11111b", w=7):
+        b = tk.Button(p, text=t, font=("Segoe UI",10,"bold"), bg=bg, fg=fg,
                      activebackground=C["accent"], activeforeground="#11111b",
-                     bd=0, pady=3, padx=6, command=c)
-        b.pack(side=s, padx=1); return b
+                     bd=0, pady=5, padx=8, width=w, cursor="hand2", command=c)
+        b.pack(side=s, padx=2); return b
 
     def _build(self):
         self.root.configure(bg=C["bg"])
@@ -125,25 +126,39 @@ class App:
         fm.add_separator()
         fm.add_command(label="Beenden", command=self.root.quit)
 
-        tb = tk.Frame(self.root, bg=C["bg"], height=36)
+        tb = tk.Frame(self.root, bg=C["bg"], height=42)
         tb.pack(fill=tk.X, padx=4, pady=(4,0))
+
+        # Gruppe Datei
         self._btn(tb, "📂 PDF", self._open_pdf, C["accent"])
         self._btn(tb, "📋 Vorlage", self._load_template, C["cyan"])
-        tk.Frame(tb, bg=C["status"], width=1).pack(side=tk.LEFT, padx=4, fill=tk.Y, pady=4)
-        self.btn_fill = self._btn(tb, "📝 Ausfüllen", lambda: self._set_mode("fill"), C["green"])
-        self.btn_edit = self._btn(tb, "✏️ Editor", lambda: self._set_mode("edit"), C["status"])
-        tk.Frame(tb, bg=C["status"], width=1).pack(side=tk.LEFT, padx=4, fill=tk.Y, pady=4)
-        self.btn_frame = self._btn(tb, "⬜ Rahmen", self._toggle_frames, C["yellow"])
-        self._btn(tb, "💾 Vorlage", self._save_template, C["cyan"])
-        self._btn(tb, "🖨️", self._print_pdf, C["yellow"])
-        self._btn(tb, "💾 PDF", self._save_pdf, C["green"])
-        tk.Frame(tb, bg=C["status"], width=1).pack(side=tk.LEFT, padx=4, fill=tk.Y, pady=4)
-        self._btn(tb, "🔍−", lambda: self._do_zoom(0.8), C["status"], fg=C["text"])
-        self._btn(tb, "🔍+", lambda: self._do_zoom(1.25), C["status"], fg=C["text"])
-        self._btn(tb, "1:1", self._zoom_reset, C["status"], fg=C["text"])
-        tk.Frame(tb, bg=C["status"], width=1).pack(side=tk.LEFT, padx=4, fill=tk.Y, pady=4)
-        self._btn(tb, "⬜ Höhe", self._set_height_dialog, C["yellow"])
-        self._btn(tb, "🔄", self._reset, C["red"])
+        tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=4, fill=tk.Y, pady=4)
+
+        # Gruppe Modus
+        self.btn_fill = self._btn(tb, "✏️ Ausfüllen", lambda: self._set_mode("fill"), C["green"], w=9)
+        self.btn_edit = self._btn(tb, "🔧 Editor", lambda: self._set_mode("edit"), C["status"], w=8)
+        tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=4, fill=tk.Y, pady=4)
+
+        # Gruppe Rahmen/Grid
+        self.btn_frame = self._btn(tb, "⬜ Rahmen", self._toggle_frames, C["yellow"], w=7)
+        self._btn(tb, "⬜ Höhe", self._set_height_dialog, C["yellow"], w=6)
+        self._btn(tb, "▦ Raster", self._set_grid_dialog, C["yellow"], w=6)
+        tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=4, fill=tk.Y, pady=4)
+
+        # Gruppe Export
+        self._btn(tb, "💾 Vorlage", self._save_template, C["cyan"], w=8)
+        self._btn(tb, "🖨️ Drucken", self._print_pdf, C["yellow"], w=8)
+        self._btn(tb, "💾 PDF", self._save_pdf, C["green"], w=7)
+        tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=4, fill=tk.Y, pady=4)
+
+        # Gruppe Zoom
+        self._btn(tb, "🔍−", lambda: self._do_zoom(0.8), C["status"], fg=C["text"], w=3)
+        self._btn(tb, "🔍+", lambda: self._do_zoom(1.25), C["status"], fg=C["text"], w=3)
+        self._btn(tb, "1:1", self._zoom_reset, C["status"], fg=C["text"], w=4)
+        tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=4, fill=tk.Y, pady=4)
+
+        # Gruppe Reset
+        self._btn(tb, "🔄 Zurücksetzen", self._reset, C["red"], w=10)
 
         self.mf = tk.Frame(self.root, bg=C["canvas"])
         self.mf.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
@@ -175,8 +190,18 @@ class App:
         if val is not None:
             self.frame_height = val
             for f in self.fields:
-                f.y1 = f.y2 - self.frame_height  # wächst nach oben
+                f.y2 = f.y1 + self.frame_height  # Höhe anpassen, Unterkante bleibt
             self._render()
+            self._status()
+
+    def _set_grid_dialog(self):
+        from tkinter import simpledialog
+        val = simpledialog.askinteger("Raster-Größe",
+            f"Aktuell: {self.grid_size} px\nNeues Raster (2-100 px):",
+            initialvalue=self.grid_size, minvalue=2, maxvalue=100,
+            parent=self.root)
+        if val is not None:
+            self.grid_size = val
             self._status()
 
     def _toggle_frames(self):
@@ -398,7 +423,7 @@ class App:
         if self.drag_field:
             # Bestehendes Feld verschieben
             f = self.drag_field
-            GRID = 15
+            GRID = self.grid_size
             new_x1 = int(px - self.dx) // GRID * GRID
             new_y1 = int(py - self.dy) // GRID * GRID
             w, h = f.w, f.h
@@ -413,7 +438,7 @@ class App:
             return
         # Neues Feld aufziehen
         self.cv.delete("drag")
-        GRID = 15  # Einrast-Raster in Pixeln
+        GRID = self.grid_size  # Einrast-Raster in Pixeln
         x1, y1 = min(self.dx,px), (min(self.dy,py)//GRID)*GRID
         x2, y2 = max(self.dx,px), y1 + self.frame_height
         z, ox, oy = self.zoom, self.ox, self.oy
@@ -434,23 +459,110 @@ class App:
             return
         px, py = self._ic(e)
         if abs(px-self.dx)<10 or abs(py-self.dy)<10: return
-        GRID = 15  # Einrast-Raster in Pixeln
+        GRID = self.grid_size  # einstellbares Raster
         y_top = min(self.dy, py)
         y1_snap = int(y_top) // GRID * GRID
         y2_snap = y1_snap + self.frame_height
         
         f = FieldRect(x1=int(min(self.dx,px)), y1=y1_snap,
                       x2=int(max(self.dx,px)), y2=y2_snap, label="", ftype="text")
-        name = simpledialog.askstring("Feldname", "Feldname:", initialvalue=f"Feld {len(self.fields)+1}")
-        if not name: return
+        
+        # Kombinierter Dialog: Name + Typ in einem Fenster
+        result = self._field_dialog(f)
+        if result is None: return
+        name, ftype, group = result
         f.label = name
-        typ = simpledialog.askstring("Feldtyp", "Typ: text / checkbox / radio", initialvalue="text")
-        if typ and typ.lower() in ("checkbox","radio"):
-            f.type = typ.lower()
-            if f.type == "radio":
-                grp = simpledialog.askstring("Radio-Gruppe", "Gruppenname:", initialvalue="gruppe1")
-                if grp: f.group = grp
+        f.type = ftype
+        f.group = group
         self.fields.append(f); self.selected = f; self._render(); self._status()
+
+    def _field_dialog(self, f):
+        """Ein Dialog für Feldname + Typ (statt zwei hintereinander)."""
+        win = tk.Toplevel(self.root)
+        win.title("Feld-Eigenschaften")
+        win.configure(bg=C["bg"])
+        win.transient(self.root)
+        win.grab_set()
+        win.resizable(False, False)
+        
+        # Zentrieren über dem Hauptfenster
+        rx, ry = self.root.winfo_x(), self.root.winfo_y()
+        rw, rh = self.root.winfo_width(), self.root.winfo_height()
+        ww, wh = 320, 200
+        win.geometry(f"{ww}x{wh}+{rx+rw//2-ww//2}+{ry+rh//2-wh//2}")
+        
+        result = {"name": "", "type": "text", "group": ""}
+        
+        tk.Label(win, text="Feldname:", bg=C["bg"], fg=C["text"],
+                 font=("Segoe UI",10)).pack(pady=(12,2))
+        name_var = tk.StringVar(value=f.label or f"Feld {len(self.fields)+1}")
+        name_et = tk.Entry(win, textvariable=name_var, bg=C["canvas"], fg=C["text"],
+                           font=("Segoe UI",11), insertbackground=C["text"],
+                           relief=tk.FLAT, bd=4)
+        name_et.pack(padx=20, pady=(0,8), fill=tk.X)
+        name_et.select_range(0, tk.END)
+        name_et.icursor(tk.END)
+        name_et.focus_set()
+        
+        tk.Label(win, text="Feldtyp:", bg=C["bg"], fg=C["text"],
+                 font=("Segoe UI",10)).pack(pady=(4,2))
+        type_var = tk.StringVar(value="text")
+        type_frame = tk.Frame(win, bg=C["bg"])
+        type_frame.pack(pady=(0,4))
+        for t_val, t_label in [("text", "📝 Text"), ("checkbox", "☑ Checkbox"), ("radio", "◉ Radio")]:
+            tk.Radiobutton(type_frame, text=t_label, variable=type_var, value=t_val,
+                          bg=C["bg"], fg=C["text"], selectcolor=C["canvas"],
+                          activebackground=C["bg"], activeforeground=C["accent"],
+                          font=("Segoe UI",10)).pack(side=tk.LEFT, padx=6)
+        
+        # Gruppenname (nur für radio)
+        group_frame = tk.Frame(win, bg=C["bg"])
+        group_lbl = tk.Label(group_frame, text="Gruppe:", bg=C["bg"], fg=C["text"],
+                             font=("Segoe UI",10))
+        group_lbl.pack(side=tk.LEFT, padx=(20,4))
+        group_var = tk.StringVar(value="gruppe1")
+        group_et = tk.Entry(group_frame, textvariable=group_var, bg=C["canvas"], fg=C["text"],
+                            font=("Segoe UI",11), insertbackground=C["text"],
+                            relief=tk.FLAT, bd=4)
+        group_et.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0,20))
+        group_frame.pack(fill=tk.X, pady=(0,8))
+        group_frame.pack_forget()  # erstmal versteckt
+        
+        def on_type_change(*args):
+            if type_var.get() == "radio":
+                group_frame.pack(fill=tk.X, pady=(0,8), before=btn_frame)
+            else:
+                group_frame.pack_forget()
+        type_var.trace_add("write", on_type_change)
+        
+        def on_ok():
+            n = name_var.get().strip()
+            if not n:
+                messagebox.showwarning("Fehler", "Bitte Feldname eingeben.", parent=win)
+                return
+            result["name"] = n
+            result["type"] = type_var.get()
+            result["group"] = group_var.get().strip() if type_var.get() == "radio" else ""
+            win.destroy()
+        
+        def on_cancel():
+            win.destroy()
+        
+        btn_frame = tk.Frame(win, bg=C["bg"])
+        btn_frame.pack(pady=(8,10))
+        tk.Button(btn_frame, text="OK", command=on_ok,
+                 bg=C["green"], fg="#11111b", font=("Segoe UI",10,"bold"),
+                 bd=0, padx=20, pady=4, cursor="hand2").pack(side=tk.LEFT, padx=6)
+        tk.Button(btn_frame, text="Abbrechen", command=on_cancel,
+                 bg=C["red"], fg="#11111b", font=("Segoe UI",10,"bold"),
+                 bd=0, padx=14, pady=4, cursor="hand2").pack(side=tk.LEFT, padx=6)
+        
+        win.bind("<Return>", lambda e: on_ok())
+        win.bind("<Escape>", lambda e: on_cancel())
+        self.root.wait_window(win)
+        
+        if not result["name"]: return None
+        return (result["name"], result["type"], result["group"])
 
     def _right(self, e):
         if self.mode != "edit": return
@@ -523,7 +635,7 @@ class App:
         tpl = f" | {self.template_name}" if self.template_name else ""
         akt = f" | {self.active_field.label}" if self.active_field else ""
         fr = " | Rahmen AUS" if not self.show_frames else ""
-        self.sb.config(text=f"{mt} | {pdf}{tpl} | {fc} Feld(er){sel}{akt}{fr}")
+        self.sb.config(text=f"{mt} | {pdf}{tpl} | {fc} Feld(er){sel}{akt}{fr} | Raster {self.grid_size}px")
 
 
 def main():
