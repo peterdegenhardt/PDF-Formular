@@ -320,11 +320,11 @@ class App:
                 # Vertikale Hilfslinien (alle ruler_step Pixel im PDF)
                 for x0 in range(self.ox, int(pdf_right), int(rl)):
                     self.cv.create_line(x0, self.oy, x0, pdf_bottom,
-                                       fill="#45475a", width=1, dash=(1,5), tags="ruler")
+                                       fill="#7f849c", width=1, dash=(1,5), tags="ruler")
                 # Horizontale Hilfslinien
                 for y0 in range(self.oy, int(pdf_bottom), int(rl)):
                     self.cv.create_line(self.ox, y0, pdf_right, y0,
-                                       fill="#45475a", width=1, dash=(1,5), tags="ruler")
+                                       fill="#7f849c", width=1, dash=(1,5), tags="ruler")
                 # Rand-Markierungen (oben und links)
                 st = self.ruler_step // 5  # 10px bei step=50
                 step_px = st * self.zoom
@@ -510,10 +510,13 @@ class App:
             g = self.grid_size
             nx = int(px - self._mv_dx) // g * g
             ny = int(py - self._mv_dy) // g * g
+            # Breite/Höhe VOR dem Ändern sichern (Properties sind live!)
+            old_w = f.x2 - f.x1
+            old_h = f.y2 - f.y1
             f.x1 = nx
             f.y1 = ny
-            f.x2 = nx + f.w
-            f.y2 = ny + f.h
+            f.x2 = nx + old_w
+            f.y2 = ny + old_h
             self.cv.delete("drag")
             z = self.zoom
             self.cv.create_rectangle(
