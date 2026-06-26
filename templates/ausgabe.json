@@ -1,0 +1,48 @@
+{
+  "name": "Sehfähigkeitsbescheinigung (Ausgabe.pdf)",
+  "description": "STZ-FB-322-02-4d - Sehfähigkeitsbescheinigung nach DIN EN ISO 9712",
+  "pdf_template": "Ausgabe.pdf",
+  "fields": [
+    {"name": "name", "label": "Herrn/Frau", "width": 50, "group": "Persönliche Daten",
+     "pos": {"x": 144, "y": 105, "w": 415, "h": 20}},
+    {"name": "geburtsdatum_tag", "label": "Geburtsdatum (TT)", "width": 5,
+     "pos": {"x": 144, "y": 145, "w": 55, "h": 20}},
+    {"name": "geburtsdatum_monat", "label": "Geburtsdatum (MM)", "width": 5,
+     "pos": {"x": 200, "y": 145, "w": 54, "h": 20}},
+    {"name": "geburtsdatum_jahr", "label": "Geburtsdatum (JJJJ)", "width": 8,
+     "pos": {"x": 254, "y": 145, "w": 145, "h": 20}},
+    {"name": "plz_1", "label": "PLZ", "width": 6, "group": "Adresse 1",
+     "pos": {"x": 144, "y": 175, "w": 55, "h": 20}},
+    {"name": "wohnort_1", "label": "Wohnort", "width": 20,
+     "pos": {"x": 253, "y": 175, "w": 146, "h": 20}},
+    {"name": "land_1", "label": "Land", "width": 15,
+     "pos": {"x": 438, "y": 175, "w": 121, "h": 20}},
+    {"name": "firma", "label": "Firma/Institut", "width": 50, "group": "Firma / Institut",
+     "pos": {"x": 144, "y": 210, "w": 415, "h": 20}},
+    {"name": "plz_2", "label": "PLZ", "width": 6, "group": "Anschrift",
+     "pos": {"x": 144, "y": 245, "w": 55, "h": 20}},
+    {"name": "ort_2", "label": "Ort", "width": 20,
+     "pos": {"x": 253, "y": 245, "w": 146, "h": 20}},
+    {"name": "land_2", "label": "Land", "width": 15,
+     "pos": {"x": 438, "y": 245, "w": 121, "h": 20}},
+    {"name": "ort_datum", "label": "Ort, Datum", "width": 30, "group": "Abschluss",
+     "pos": {"x": 59, "y": 665, "w": 176, "h": 20}},
+    {"name": "unterschrift", "label": "Stempel, Unterschrift", "width": 40,
+     "pos": {"x": 267, "y": 665, "w": 292, "h": 20}}
+  ],
+  "checkboxes": [
+    {"name": "nahvisus_bestanden", "label": "Nahvisus bestanden",
+     "pos": {"x": 65, "y": 428, "size": 18}},
+    {"name": "farbsehen_bestanden", "label": "Farbsehvermögen bestanden",
+     "pos": {"x": 65, "y": 512, "size": 18}}
+  ],
+  "radio_group": {
+    "label": "Sehhilfe",
+    "options": [
+      {"label": "Erforderlich", "value": "erforderlich",
+       "pos": {"x": 207, "y": 609, "size": 18}},
+      {"label": "Nicht erforderlich", "value": "nicht erforderlich",
+       "pos": {"x": 349, "y": 609, "size": 18}}
+    ]
+  }
+}
