@@ -188,9 +188,11 @@ class App:
             initialvalue=self.frame_height, minvalue=10, maxvalue=500,
             parent=self.root)
         if val is not None:
+            old_h = self.frame_height
             self.frame_height = val
+            # Änderungsdelta für jedes Feld: Oberkante wandert nach oben/unten
             for f in self.fields:
-                f.y2 = f.y1 + self.frame_height  # Höhe anpassen, Unterkante bleibt
+                f.y1 = f.y2 - self.frame_height  # wächst nach oben
             self._render()
             self._status()
 
@@ -383,13 +385,15 @@ class App:
             if f:
                 self.selected = f
                 self.dragging = True
-                self.drag_field = f  # Feld verschieben, nicht neu erzeugen
+                self.drag_field = f  # Feld verschieben
                 self.dx, self.dy = px - f.x1, py - f.y1
                 self._render(); self._status()
             else:
-                self.dragging = True
-                self.drag_field = None  # neues Feld aufziehen
+                # erst mal nur merken — kein dragging bis Bewegung
+                self.drag_field = None  # None = neues Feld
                 self.dx, self.dy = px, py
+                self.dragging = False  # False bis Maus sich bewegt
+                self._start_drag = False
         elif self.mode == "fill":
             f = self._find(px,py)
             if f:
@@ -418,10 +422,10 @@ class App:
             self.pan_oy += dy
             self._render()
             return
-        if not self.dragging: return
-        px, py = self._ic(e)
         if self.drag_field:
             # Bestehendes Feld verschieben
+            self.dragging = True
+            px, py = self._ic(e)
             f = self.drag_field
             GRID = self.grid_size
             new_x1 = int(px - self.dx) // GRID * GRID
@@ -436,14 +440,21 @@ class App:
                                      outline=C["yellow"],fill="",width=3,dash=(4,4),tags="drag")
             self._render()
             return
-        # Neues Feld aufziehen
+        # Neues Feld — erst bei Bewegung aktivieren
+        if not self.dragging:
+            px, py = self._ic(e)
+            if abs(px - self.dx) > 3 or abs(py - self.dy) > 3:
+                self.dragging = True
+        if not self.dragging:
+            return
+        px, py = self._ic(e)
         self.cv.delete("drag")
-        GRID = self.grid_size  # Einrast-Raster in Pixeln
+        GRID = self.grid_size
         x1, y1 = min(self.dx,px), (min(self.dy,py)//GRID)*GRID
         x2, y2 = max(self.dx,px), y1 + self.frame_height
         z, ox, oy = self.zoom, self.ox, self.oy
         self.cv.create_rectangle(ox+int(x1*z),oy+int(y1*z),ox+int(x2*z),oy+int(y2*z),
-                                outline=C["accent"],fill="#2a3040",width=2,dash=(4,4),tags="drag")
+                                outline=C["accent"],fill="",width=2,dash=(4,4),tags="drag")
 
     def _release(self, e):
         if self.panning:
