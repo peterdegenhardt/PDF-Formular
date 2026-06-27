@@ -584,8 +584,8 @@ class App:
             fs = max(8, int(pt * SCALE * z * 0.8))
             txt = str(f.value)
             fc = self.font_color if self.font_color else "#000000"
-            # Unten bündig: y2 minus Schrifthöhe, wächst nach oben
-            y_top = y2 - fs - 1
+            # Unten bündig: Oberkante des Textes = y2 - fs - 2 (2px Abstand unten)
+            y_top = y2 - fs - 2
             # Schriftname für tkinter: Liberation Sans → Liberation Sans (tkinter kann das)
             # Fallback: wenn unbekannt, nimm "Liberation Sans"
             fn_map = {
@@ -952,17 +952,16 @@ class App:
 
         for f in self.fields:
             if f.type == "text" and f.value:
-                # Schrift in Punkt — aus Einstellung, aber auf Feldhöhe begrenzt
+                # Schrift in Punkt — aus Einstellung
                 pt = max(6, min(36, self.font_size))
                 font = get_font(pt, self.font_name)
                 fill_color = self.font_color if self.font_color else "#000000"
-                # PIL-Offset für korrekte y-Position
+                # PIL-Offset: bbox[1] ist negativ — Abstand von draw_y bis Oberkante
                 ref_bbox = font.getbbox('Ag')
-                # bbox[1] ist negativ: Abstand von draw_y bis Oberkante der Glyphen
                 pil_offset = ref_bbox[1]
-                # Text zentriert innerhalb des Feldes — minimalen Offset nach unten
-                text_h = ref_bbox[3] - ref_bbox[1]  # effektive Höhe des Textes
-                draw_y = f.y1 + (f.h - text_h) // 2 - 1 - pil_offset
+                text_h = ref_bbox[3] - ref_bbox[1]
+                # Unten bündig: Unterkante Text = Unterkante Feld - 2px
+                draw_y = f.y2 - text_h - 2 - pil_offset
                 d.text((f.x1 + 2, draw_y), str(f.value), fill=fill_color, font=font)
             elif f.type == "checkbox" and f.value in (True,"True","true","1"):
                 for i in range(2):
