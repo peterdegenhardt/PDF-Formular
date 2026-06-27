@@ -156,7 +156,16 @@ class App:
         fm.add_separator()
         fm.add_command(label="🖨️ Drucken", command=self._print_pdf)
         fm.add_separator()
+        fm.add_command(label="❌ Schließen", command=self._close_all)
         fm.add_command(label="Beenden", command=self.root.quit)
+
+        # Einstellungen-Menü
+        sm = tk.Menu(mb, tearoff=0, bg=C["bg"], fg=C["text"],
+                     activebackground=C["accent"], activeforeground="#11111b")
+        mb.add_cascade(label="Einstellungen", menu=sm)
+        sm.add_command(label="🖊️ Schrift...", command=self._font_dialog)
+        sm.add_command(label="🎨 Farbschema...", command=self._color_dialog)
+        sm.add_command(label="⚙️ Allgemein...", command=self._general_dialog)
 
         tb = tk.Frame(self.root, bg=C["bg"], height=38)
         tb.pack(fill=tk.X, padx=3, pady=(3,0))
@@ -326,6 +335,134 @@ class App:
 
         btn_frame = tk.Frame(win, bg=C["bg"])
         btn_frame.pack(pady=(12,10))
+        tk.Button(btn_frame, text="OK", command=on_ok,
+                 bg=C["green"], fg="#11111b", font=("Segoe UI",10,"bold"),
+                 bd=0, padx=20, pady=4, cursor="hand2").pack(side=tk.LEFT, padx=6)
+        tk.Button(btn_frame, text="Abbrechen", command=on_cancel,
+                 bg=C["red"], fg="#11111b", font=("Segoe UI",10,"bold"),
+                 bd=0, padx=14, pady=4, cursor="hand2").pack(side=tk.LEFT, padx=6)
+
+        win.bind("<Return>", lambda e: on_ok())
+        win.bind("<Escape>", lambda e: on_cancel())
+
+    def _close_all(self):
+        """Schließt PDF, Vorlage, Projekt und setzt alles zurück."""
+        self._stop_typing()
+        self.pdf_path = None
+        self.pdf_image = self.pdf_tk = None
+        self.fields.clear()
+        self.selected = None
+        self.template_path = self.template_name = None
+        self.project_path = self.project_name = None
+        self._render()
+        self._status()
+
+    def _color_dialog(self):
+        """Dialog für Farben der App-Oberfläche."""
+        win = tk.Toplevel(self.root)
+        win.title("Farbschema")
+        win.configure(bg=C["bg"])
+        win.transient(self.root)
+        win.grab_set()
+        win.resizable(False, False)
+
+        rx, ry = self.root.winfo_x(), self.root.winfo_y()
+        rw, rh = self.root.winfo_width(), self.root.winfo_height()
+        ww, wh = 360, 300
+        win.geometry(f"{ww}x{wh}+{rx+rw//2-ww//2}+{ry+rh//2-wh//2}")
+
+        vars_ = {}
+        felder = [
+            ("Hintergrund", "bg"),
+            ("Canvas", "canvas"),
+            ("Akzent", "accent"),
+            ("Statusleiste", "status"),
+        ]
+        row = 0
+        for label, key in felder:
+            tk.Label(win, text=label, bg=C["bg"], fg=C["text"],
+                    font=("Segoe UI",10)).grid(row=row, column=0, padx=10, pady=4, sticky=tk.W)
+            vars_[key] = tk.StringVar(value=C[key])
+            et = tk.Entry(win, textvariable=vars_[key], bg=C["canvas"], fg=C["text"],
+                         font=("Segoe UI",10,"bold"), relief=tk.FLAT, bd=2, width=14)
+            et.grid(row=row, column=1, padx=4, pady=4)
+            # Farbvorschau
+            preview = tk.Label(win, bg=C[key], width=4, relief=tk.RAISED, bd=2)
+            preview.grid(row=row, column=2, padx=4, pady=4)
+            row += 1
+
+        def on_ok():
+            for key, var in vars_.items():
+                C[key] = var.get().strip()
+            # Komplette UI neu einfärben
+            self.root.configure(bg=C["bg"])
+            self.mf.configure(bg=C["canvas"])
+            self.cv.configure(bg=C["canvas"])
+            self.sb.configure(bg=C["status"], fg=C["text"])
+            self._render()
+            self._status()
+            win.destroy()
+
+        def on_cancel():
+            win.destroy()
+
+        btn_frame = tk.Frame(win, bg=C["bg"])
+        btn_frame.grid(row=row, column=0, columnspan=3, pady=(12,10))
+        tk.Button(btn_frame, text="OK", command=on_ok,
+                 bg=C["green"], fg="#11111b", font=("Segoe UI",10,"bold"),
+                 bd=0, padx=20, pady=4, cursor="hand2").pack(side=tk.LEFT, padx=6)
+        tk.Button(btn_frame, text="Abbrechen", command=on_cancel,
+                 bg=C["red"], fg="#11111b", font=("Segoe UI",10,"bold"),
+                 bd=0, padx=14, pady=4, cursor="hand2").pack(side=tk.LEFT, padx=6)
+
+        win.bind("<Return>", lambda e: on_ok())
+        win.bind("<Escape>", lambda e: on_cancel())
+
+    def _general_dialog(self):
+        """Allgemeine Einstellungen (Raster, Rahmenhöhe, Lineal)."""
+        win = tk.Toplevel(self.root)
+        win.title("Allgemeine Einstellungen")
+        win.configure(bg=C["bg"])
+        win.transient(self.root)
+        win.grab_set()
+        win.resizable(False, False)
+
+        rx, ry = self.root.winfo_x(), self.root.winfo_y()
+        rw, rh = self.root.winfo_width(), self.root.winfo_height()
+        ww, wh = 320, 200
+        win.geometry(f"{ww}x{wh}+{rx+rw//2-ww//2}+{ry+rh//2-wh//2}")
+
+        # Raster
+        tk.Label(win, text="Raster (px):", bg=C["bg"], fg=C["text"],
+                font=("Segoe UI",10)).pack(pady=(12,2))
+        grid_var = tk.IntVar(value=self.grid_size)
+        tk.Spinbox(win, from_=2, to=50, textvariable=grid_var, bg=C["canvas"],
+                  fg=C["text"], buttonbackground=C["status"],
+                  font=("Segoe UI",11), width=6).pack()
+
+        # Rahmenhöhe
+        tk.Label(win, text="Rahmenhöhe (px):", bg=C["bg"], fg=C["text"],
+                font=("Segoe UI",10)).pack(pady=(8,2))
+        height_var = tk.IntVar(value=self.frame_height)
+        tk.Spinbox(win, from_=20, to=300, textvariable=height_var, bg=C["canvas"],
+                  fg=C["text"], buttonbackground=C["status"],
+                  font=("Segoe UI",11), width=6).pack()
+
+        def on_ok():
+            self.grid_size = grid_var.get()
+            old_h = self.frame_height
+            self.frame_height = height_var.get()
+            for f in self.fields:
+                f.y1 = f.y2 - self.frame_height
+            self._render()
+            self._status()
+            win.destroy()
+
+        def on_cancel():
+            win.destroy()
+
+        btn_frame = tk.Frame(win, bg=C["bg"])
+        btn_frame.pack(pady=(16,10))
         tk.Button(btn_frame, text="OK", command=on_ok,
                  bg=C["green"], fg="#11111b", font=("Segoe UI",10,"bold"),
                  bd=0, padx=20, pady=4, cursor="hand2").pack(side=tk.LEFT, padx=6)
