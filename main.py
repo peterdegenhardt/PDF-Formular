@@ -1481,7 +1481,7 @@ class App:
 
     def _stempel_bild(self, s, scale=1.0):
         """Erzeugt ein PIL-Image des Stempels (in 300-DPI-Auflösung mit optionalem Skalierungsfaktor)."""
-        pt = max(12, int(24 * scale))
+        pt = max(12, int(48 * scale))
         try:
             font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", pt)
         except:
