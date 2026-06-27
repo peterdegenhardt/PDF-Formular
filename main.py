@@ -520,11 +520,19 @@ class App:
             tk.Label(inp_frame, text=label, bg=C["bg"], fg=C["text"],
                     font=("Segoe UI",10), width=14, anchor=tk.W).grid(row=row, column=0, padx=6, pady=4)
             vars_[key] = tk.StringVar(value=C[key])
-            et = tk.Entry(inp_frame, textvariable=vars_[key], bg=C["canvas"], fg=C["text"],
-                         font=("Segoe UI",10,"bold"), relief=tk.FLAT, bd=2, width=14)
-            et.grid(row=row, column=1, padx=4, pady=4)
-            previews[key] = tk.Label(inp_frame, bg=C[key], width=4, height=1, relief=tk.RAISED, bd=2)
-            previews[key].grid(row=row, column=2, padx=4, pady=4)
+            def pick_color(k=key):
+                import tkinter.colorchooser
+                farbe = tkinter.colorchooser.askcolor(
+                    title=f"Farbe für {label}", color=C[k], parent=win)
+                if farbe and farbe[1]:
+                    vars_[k].set(farbe[1])  # Hex-Wert
+                    previews[k].configure(bg=farbe[1])
+            previews[key] = tk.Label(inp_frame, bg=C[key], width=6, height=1,
+                                    relief=tk.RAISED, bd=3, cursor="hand2")
+            previews[key].grid(row=row, column=1, padx=4, pady=4, sticky=tk.W)
+            previews[key].bind("<Button-1>", lambda e, k=key: pick_color(k))
+            tk.Label(inp_frame, textvariable=vars_[key], bg=C["bg"], fg=C["dim"],
+                    font=("Segoe UI",8), width=10, anchor=tk.W).grid(row=row, column=2, padx=2, pady=4, sticky=tk.W)
             row += 1
 
         def apply_ui():
