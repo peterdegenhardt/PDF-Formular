@@ -1550,19 +1550,19 @@ class App:
         y1 = oy + int(a.y1 * z)
         x2 = ox + int(a.x2 * z)
         y2 = oy + int(a.y2 * z)
-        self._draw_arrow_line(self.cv, x1, y1, x2, y2, a.color, tags="f")
+        head_len = max(18, int(30 * z))
+        self._draw_arrow_line(self.cv, x1, y1, x2, y2, a.color, head_len=head_len, tags="f")
 
     def _draw_arrow_preview(self, x1, y1, x2, y2):
         """Zeichnet eine Pfeil-Vorschau während des Ziehens (Drag)."""
-        self._draw_arrow_line(self.cv, x1, y1, x2, y2, C["accent"], width=2, dash=(4, 4), tags="drag")
+        self._draw_arrow_line(self.cv, x1, y1, x2, y2, C["accent"], width=2, head_len=18, dash=(4, 4), tags="drag")
 
     def _draw_arrow_pdf(self, d, a):
         """Malt einen Pfeil auf das 300-DPI-PDF-Bild (ImageDraw)."""
-        from math import atan2, cos, sin, pi, sqrt
-        self._draw_arrow_line_pil(d, a.x1, a.y1, a.x2, a.y2, a.color)
+        self._draw_arrow_line_pil(d, a.x1, a.y1, a.x2, a.y2, a.color, width=4, head_len=30)
 
     @staticmethod
-    def _draw_arrow_line(cv, x1, y1, x2, y2, color, width=2, tags="f", dash=None):
+    def _draw_arrow_line(cv, x1, y1, x2, y2, color, width=2, tags="f", dash=None, head_len=18):
         """Zeichnet eine Pfeillinie + Pfeilspitze auf dem tkinter Canvas."""
         from math import atan2, cos, sin, pi
         dx, dy = x2 - x1, y2 - y1
@@ -1576,7 +1576,6 @@ class App:
             kw["dash"] = dash
         cv.create_line(x1, y1, x2, y2, **kw)
         # Pfeilspitze (Dreieck)
-        head_len = max(12, int(width * 6))
         head_angle = pi / 6  # 30 Grad
         p1x = x2 - head_len * cos(angle - head_angle)
         p1y = y2 - head_len * sin(angle - head_angle)
@@ -1586,7 +1585,7 @@ class App:
                           fill=color, outline=color, width=1, tags=tags)
 
     @staticmethod
-    def _draw_arrow_line_pil(d, x1, y1, x2, y2, color, width=3):
+    def _draw_arrow_line_pil(d, x1, y1, x2, y2, color, width=4, head_len=30):
         """Malt eine Pfeillinie + Pfeilspitze auf PIL ImageDraw."""
         from math import atan2, cos, sin, pi
         dx, dy = x2 - x1, y2 - y1
@@ -1595,7 +1594,6 @@ class App:
             return
         angle = atan2(dy, dx)
         d.line([(x1, y1), (x2, y2)], fill=color, width=width)
-        head_len = max(16, int(width * 6))
         head_angle = pi / 6
         p1 = (x2 - head_len * cos(angle - head_angle),
               y2 - head_len * sin(angle - head_angle))
