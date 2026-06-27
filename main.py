@@ -584,7 +584,8 @@ class App:
             fs = max(8, int(pt * SCALE * z * 0.8))
             txt = str(f.value)
             fc = self.font_color if self.font_color else "#000000"
-            y_center = y1 + fs // 2 + 5
+            # Unten bündig: y2 minus Schrifthöhe, wächst nach oben
+            y_top = y2 - fs - 1
             # Schriftname für tkinter: Liberation Sans → Liberation Sans (tkinter kann das)
             # Fallback: wenn unbekannt, nimm "Liberation Sans"
             fn_map = {
@@ -595,7 +596,7 @@ class App:
                 "Arial": "Arial",
             }
             fn = fn_map.get(self.font_name, "Liberation Sans")
-            self.cv.create_text(x1+3, y_center, anchor=tk.W, text=txt, fill=fc,
+            self.cv.create_text(x1+3, y_top, anchor=tk.NW, text=txt, fill=fc,
                                font=(fn,fs), tags="f")
 
         # Checkbox/Radio
