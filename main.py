@@ -437,13 +437,10 @@ class App:
             self.cv.configure(bg=C["canvas"])
             self.sb.configure(bg=C["status"], fg=C["text"])
             self._tb.configure(bg=C["bg"])
-            # Toolbar-Trennstriche und Buttons mit Text neu einfärben
+            # Toolbar-Trennstriche neu einfärben (Buttons bleiben unverändert)
             for w in self._tb_children:
                 if isinstance(w, tk.Frame):
                     w.configure(bg=C["status"])
-                elif isinstance(w, tk.Button):
-                    try: w.configure(fg=C["text"])
-                    except: pass
             # Menüleiste komplett neu
             self.root.config(menu=None)
             self._build_menus()
