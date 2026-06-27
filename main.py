@@ -1480,8 +1480,8 @@ class App:
         return self.stamps.get(str(self.current_page), [])
 
     def _stempel_bild(self, s, scale=1.0):
-        """Erzeugt ein PIL-Image des Stempels (mit Rahmen + Rotation)."""
-        pt = max(12, int(16 * scale))
+        """Erzeugt ein PIL-Image des Stempels (in 300-DPI-Auflösung mit optionalem Skalierungsfaktor)."""
+        pt = max(12, int(24 * scale))
         try:
             font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", pt)
         except:
@@ -1519,11 +1519,15 @@ class App:
         return img
 
     def _draw_stempel(self, s):
-        """Zeichnet einen Stempel als gerendertes PIL-Image auf dem Canvas."""
+        """Zeichnet einen Stempel auf dem Canvas — skaliert mit Zoom."""
         z = self.zoom
-        img = self._stempel_bild(s, scale=z)
-        self._stempel_images[s] = img  # für später (PDF-Export)
-        iw, ih = img.size
+        # 300-DPI-Basis-Bild erzeugen
+        base = self._stempel_bild(s, scale=1.0)
+        # Auf Zoom-Größe runterskalieren (wie pdf_image auch)
+        bw, bh = base.size
+        sw, sh = max(1, int(bw * z)), max(1, int(bh * z))
+        img = base.resize((sw, sh), Image.LANCZOS)
+        # Position: s.x/s.y sind 300-DPI-Koordinaten
         x = self.ox + int(s.x * z)
         y = self.oy + int(s.y * z)
         self._stempel_tk[s] = ImageTk.PhotoImage(img)
