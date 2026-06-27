@@ -974,6 +974,7 @@ class App:
             self._mv_field = f
             self._mv_px, self._mv_py = px, py
             self._mv_dx, self._mv_dy = px - f.x1, py - f.y1
+            self._mv_w, self._mv_h = f.w, f.h  # <-- sichern
             self._drag_mode = "move"
             self._render()
             self._status()
@@ -1020,8 +1021,8 @@ class App:
             old_h = f.y2 - f.y1
             f.x1 = nx
             f.y1 = ny
-            f.x2 = nx + old_w
-            f.y2 = ny + old_h
+            f.x2 = nx + getattr(self, '_mv_w', old_w)
+            f.y2 = ny + getattr(self, '_mv_h', old_h)
             self.cv.delete("drag")
             z = self.zoom
             self.cv.create_rectangle(
@@ -1073,6 +1074,7 @@ class App:
             self._mv_field = f
             self._mv_px, self._mv_py = px, py
             self._mv_dx, self._mv_dy = px - f.x1, py - f.y1
+            self._mv_w, self._mv_h = f.w, f.h  # <-- sichern vor Änderung
             self._render()
             self._status()
 
@@ -1089,8 +1091,8 @@ class App:
         ny = int(py - self._mv_dy) // g * g
         f.x1 = nx
         f.y1 = ny
-        f.x2 = nx + f.w
-        f.y2 = ny + f.h
+        f.x2 = nx + getattr(self, '_mv_w', f.w)
+        f.y2 = ny + getattr(self, '_mv_h', f.h)
         self.cv.delete("drag")
         z = self.zoom
         self.cv.create_rectangle(
