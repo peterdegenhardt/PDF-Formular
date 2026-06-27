@@ -132,6 +132,7 @@ class App:
         self.show_ruler = True  # Lineal ein/aus
         self.ruler_step = 50  # Pixelabstand Lineal-Striche
         self.grid_size = 15  # Einrast-Raster, jetzt einstellbar
+        self.selected_tool = None  # Werkzeug aus Toolbox
 
         self._build()
         self._set_mode("fill")
@@ -278,8 +279,46 @@ class App:
             if isinstance(child, tk.Button) and child.cget("text") in TOOLTIPS:
                 self._attach_tooltip(child, TOOLTIPS[child.cget("text")])
 
+        # ─── Toolbox links ─────────────────────────────────────
+        self.toolbox = tk.Frame(self.root, bg=C["bg"], width=58)
+        self.toolbox.pack(side=tk.LEFT, fill=tk.Y, padx=(4,0), pady=4)
+        self.toolbox.pack_propagate(False)
+
+        werkzeuge = [
+            ("⬆️", "Pfeil", "Auswahl (Default)"),
+            ("╱", "Linie", "Linie zeichnen"),
+            ("▭", "Rechteck", "Rechteck zeichnen"),
+            ("◯", "Ellipse", "Kreis/Ellipse zeichnen"),
+            ("▣", "Maske", "Bereich maskieren"),
+            ("🖼️", "Bild", "Bild einfügen"),
+            ("🕹️", "Stempel", "Stempel aufdrücken"),
+        ]
+        self._tool_buttons = {}
+        for icon, name, tip in werkzeuge:
+            btn = tk.Button(self.toolbox, text=icon, font=("Segoe UI",14),
+                          bg=C["bg"], fg=C["text"],
+                          activebackground=C["accent"], activeforeground="#11111b",
+                          relief=tk.FLAT, bd=1, pady=4, padx=2,
+                          cursor="hand2", width=3,
+                          command=lambda n=name: self._set_tool(n))
+            btn.pack(pady=1, padx=2, fill=tk.X)
+            self._tool_buttons[name] = btn
+            self._attach_tooltip(btn, tip)
+
+        # Toolbox: Beenden-Button ganz unten
+        self.toolbox_padding = tk.Frame(self.toolbox, bg=C["bg"])
+        self.toolbox_padding.pack(fill=tk.BOTH, expand=True)
+        self.btn_exit = tk.Button(self.toolbox, text="❌", font=("Segoe UI",14),
+                                bg=C["red"], fg="#11111b",
+                                activebackground=C["red"], activeforeground="#11111b",
+                                relief=tk.RAISED, bd=2, pady=4, padx=2,
+                                cursor="hand2", width=3, command=self.root.quit)
+        self.btn_exit.pack(side=tk.BOTTOM, pady=(0,4), padx=2)
+        self._attach_tooltip(self.btn_exit, "Beenden")
+
+        # ─── Canvas-Bereich ────────────────────────────────────
         self.mf = tk.Frame(self.root, bg=C["canvas"])
-        self.mf.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+        self.mf.pack(fill=tk.BOTH, expand=True, padx=(0,4), pady=4)
         self.cv = tk.Canvas(self.mf, bg=C["canvas"], cursor="arrow",
                            highlightthickness=0, bd=0)
         self.cv.pack(fill=tk.BOTH, expand=True)
@@ -310,6 +349,17 @@ class App:
         # Popup-Menüs bei Klick irgendwo schließen
         self.root.bind("<Button-1>", self._close_menus, add="+")
         self.root.bind("<Button-3>", self._close_menus, add="+")
+
+    def _set_tool(self, name):
+        """Wählt ein Werkzeug aus der Toolbox."""
+        self.selected_tool = name
+        # Buttons visuell hervorheben
+        for n, btn in self._tool_buttons.items():
+            if n == name:
+                btn.configure(bg=C["accent"], fg="#11111b", relief=tk.RAISED)
+            else:
+                btn.configure(bg=C["bg"], fg=C["text"], relief=tk.FLAT)
+        self._status()
 
     def _set_height_dialog(self):
         from tkinter import simpledialog
@@ -545,6 +595,15 @@ class App:
             if hasattr(self, 'sb_mouse'):
                 self.sb_mouse.configure(bg=C["status"], fg=C["dim"])
             self._tb.configure(bg=C["bg"])
+            # Toolbox einfärben
+            if hasattr(self, 'toolbox'):
+                self.toolbox.configure(bg=C["bg"])
+                self.toolbox_padding.configure(bg=C["bg"])
+                for n, btn in self._tool_buttons.items():
+                    if n == self.selected_tool:
+                        btn.configure(bg=C["accent"], fg="#11111b")
+                    else:
+                        btn.configure(bg=C["bg"], fg=C["text"])
             # Page-Label einfärben
             if hasattr(self, 'page_label'):
                 self.page_label.configure(bg=C["bg"], fg=C["text"])
@@ -1351,6 +1410,8 @@ class App:
 
     def _mouse_help(self):
         """Gibt kontextabhängige Maus-Hilfe für die untere Statusleiste."""
+        if self.selected_tool and self.selected_tool != "Pfeil":
+            return f"🛠️ Werkzeug: {self.selected_tool} — auf Canvas klicken und ziehen zum Zeichnen"
         if self.mode == "fill":
             return "🖱️ Linke Taste: Text eingeben oder Häkchen setzen | Rechte Taste: Bild verschieben | Mausrad: Zoom"
         else:  # edit
