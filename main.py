@@ -130,6 +130,20 @@ class Arrow:
                 "x2": self.x2, "y2": self.y2, "color": self.color}
 
 
+class Rect:
+    """Ein Rechteck auf dem PDF."""
+    def __init__(self, x1=0, y1=0, x2=0, y2=0, color="#4a90d9", fill=None):
+        self.x1, self.y1 = min(x1, x2), min(y1, y2)
+        self.x2, self.y2 = max(x1, x2), max(y1, y2)
+        self.color = color
+        self.fill = fill
+
+    def to_dict(self):
+        return {"x1": self.x1, "y1": self.y1,
+                "x2": self.x2, "y2": self.y2, "color": self.color,
+                "fill": self.fill}
+
+
 class App:
     def __init__(self, root):
         self.root = root
@@ -150,6 +164,7 @@ class App:
         self.fields = {}  # dict: {"0": [FieldRect, ...], "1": [...]}
         self.stamps = {}  # dict: {"0": [Stamp, ...], "1": [...]}
         self.arrows = {}  # dict: {"0": [Arrow, ...], "1": [...]}
+        self.rects = {}   # dict: {"0": [Rect, ...], "1": [...]}
         self.selected = None
         self.template_path = self.template_name = None
         self.project_path = self.project_name = None
@@ -456,6 +471,8 @@ class App:
             self.stamps[key] = []
         if key not in self.arrows:
             self.arrows[key] = []
+        if key not in self.rects:
+            self.rects[key] = []
         self.selected = None
         self._fit_zoom()
         self._render()
@@ -557,6 +574,7 @@ class App:
         self.fields = {}
         self.stamps = {}
         self.arrows = {}
+        self.rects = {}
         self._stempel_images = {}
         self._stempel_tk = {}
         self.current_page = 0
@@ -809,6 +827,8 @@ class App:
                 self.stamps[key] = []
             if key not in self.arrows:
                 self.arrows[key] = []
+            if key not in self.rects:
+                self.rects[key] = []
             self._fit_zoom(); self._render(); self._status()
         except Exception as e: messagebox.showerror("Fehler", f"PDF: {e}")
 
@@ -1027,6 +1047,13 @@ class App:
                 except Exception as e:
                     print(f"Pfeil-Fehler: {e}")
 
+            # Rechtecke zeichnen
+            for r in self._current_rects():
+                try:
+                    self._draw_rect(r)
+                except Exception as e:
+                    print(f"Rechteck-Fehler: {e}")
+
             self.cv.create_text(cw-10,10, anchor=tk.NE, text=f"{self.zoom*100:.0f}%",
                                fill="white", font=("Arial",10))
         except Exception as e: print(f"Render: {e}")
@@ -1136,6 +1163,11 @@ class App:
             # Pfeil zeichnen: Klick = Start, Drag = Ende
             self._arrow_start = (int(px), int(py))
             self._drag_mode = "arrow"
+            return
+
+        if self.selected_tool == "Rechteck":
+            self._rect_start = (int(px), int(py))
+            self._drag_mode = "rect"
             return
 
         if self.mode == "edit":
@@ -1248,6 +1280,21 @@ class App:
             self._draw_arrow_preview(ox + int(x1 * z), oy + int(y1 * z),
                                      ox + int(px * z), oy + int(py * z))
 
+        elif dm == "rect":
+            px, py = self._ic(e)
+            x1, y1 = self._rect_start
+            if abs(px - x1) < 3 and abs(py - y1) < 3:
+                return
+            self.cv.delete("drag")
+            z = self.zoom
+            ox, oy = self.ox, self.oy
+            rx1 = ox + int(min(x1, px) * z)
+            ry1 = oy + int(min(y1, py) * z)
+            rx2 = ox + int(max(x1, px) * z)
+            ry2 = oy + int(max(y1, py) * z)
+            self.cv.create_rectangle(rx1, ry1, rx2, ry2,
+                                     outline=C["accent"], width=2, dash=(4, 4), tags="drag")
+
     def _release_b1(self, e):
         """Button-1 loslassen: je nach drag_mode"""
         dm = getattr(self, '_drag_mode', None)
@@ -1288,6 +1335,16 @@ class App:
                 if key not in self.arrows:
                     self.arrows[key] = []
                 self.arrows[key].append(Arrow(x1=x1, y1=y1, x2=int(px), y2=int(py)))
+                self._render()
+                self._status()
+        elif dm == "rect" and e:
+            px, py = self._ic(e)
+            x1, y1 = self._rect_start
+            if abs(px - x1) >= 8 or abs(py - y1) >= 8:
+                key = str(self.current_page)
+                if key not in self.rects:
+                    self.rects[key] = []
+                self.rects[key].append(Rect(x1=x1, y1=y1, x2=int(px), y2=int(py)))
                 self._render()
                 self._status()
 
@@ -1505,6 +1562,13 @@ class App:
             except Exception as e:
                 print(f"Pfeil-PDF-Fehler: {e}")
 
+        # Rechtecke auf PDF malen
+        for r in self._current_rects():
+            try:
+                self._draw_rect_pdf(d, r)
+            except Exception as e:
+                print(f"Rechteck-PDF-Fehler: {e}")
+
         tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
         img.save(tmp.name, "PDF", resolution=300)
         return tmp.name
@@ -1542,6 +1606,26 @@ class App:
     def _current_arrows(self):
         """Gibt die Pfeil-Liste der aktuellen Seite zurück."""
         return self.arrows.get(str(self.current_page), [])
+
+    def _current_rects(self):
+        """Gibt die Rechteck-Liste der aktuellen Seite zurück."""
+        return self.rects.get(str(self.current_page), [])
+
+    def _draw_rect(self, r):
+        """Zeichnet ein Rechteck auf dem Canvas."""
+        z, ox, oy = self.zoom, self.ox, self.oy
+        x1 = ox + int(r.x1 * z)
+        y1 = oy + int(r.y1 * z)
+        x2 = ox + int(r.x2 * z)
+        y2 = oy + int(r.y2 * z)
+        line_w = max(1, int(3 * z))
+        self.cv.create_rectangle(x1, y1, x2, y2,
+                                 outline=r.color, fill=r.fill or "", width=line_w, tags="f")
+
+    def _draw_rect_pdf(self, d, r):
+        """Malt ein Rechteck auf das 300-DPI-PDF-Bild (ImageDraw)."""
+        d.rectangle([(r.x1, r.y1), (r.x2, r.y2)],
+                    outline=r.color, fill=r.fill, width=4)
 
     def _draw_arrow(self, a):
         """Zeichnet einen Pfeil auf dem Canvas."""
@@ -1733,6 +1817,8 @@ class App:
         sc = len(stamps)
         arrows = self._current_arrows()
         ac = len(arrows)
+        rects = self._current_rects()
+        rc = len(rects)
         sel = f" | {self.selected.label}" if self.selected else ""
         tpl = f" | Vorlage:{self.template_name}" if self.template_name else ""
         proj = f" | Projekt:{self.project_name}" if self.project_name else ""
@@ -1741,7 +1827,8 @@ class App:
         pages = f" | Seite {self.current_page+1}/{self.page_count}" if self.page_count > 1 else ""
         stempel = f" | {sc} Stempel" if sc else ""
         pfeile = f" | {ac} Pfeil(e)" if ac else ""
-        self.sb.config(text=f"{mt} | {pdf}{tpl}{proj} | {fc} Feld(er){stempel}{pfeile}{sel}{akt}{fr}{pages} | Raster {self.grid_size}px")
+        rechtecke = f" | {rc} Rechteck(e)" if rc else ""
+        self.sb.config(text=f"{mt} | {pdf}{tpl}{proj} | {fc} Feld(er){stempel}{pfeile}{rechtecke}{sel}{akt}{fr}{pages} | Raster {self.grid_size}px")
         # Maus-Hilfe aktualisieren
         if hasattr(self, 'sb_mouse'):
             self.sb_mouse.config(text=self._mouse_help())
