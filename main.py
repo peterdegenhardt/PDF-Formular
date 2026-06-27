@@ -134,9 +134,7 @@ class App:
         self._build()
         self._set_mode("fill")
 
-    def _btn(self, p, t, c, bg, s=tk.LEFT, fg=None, w=0):
-        if fg is None:
-            fg = C["text"]
+    def _btn(self, p, t, c, bg, s=tk.LEFT, fg="#11111b", w=0):
         b = tk.Button(p, text=t, font=("Segoe UI",9,"bold"), bg=bg, fg=fg,
                      activebackground=C["accent"], activeforeground="#11111b",
                      relief=tk.RAISED, bd=2, pady=4, padx=6, width=w, cursor="hand2", command=c)
@@ -214,9 +212,9 @@ class App:
 
         # --- Drucken / Zoom ---
         self._btn(self._tb, "Drucken", self._print_pdf, C["yellow"])
-        self._btn(self._tb, "−", lambda: self._do_zoom(0.8), C["status"], fg=C["text"])
-        self._btn(self._tb, "+", lambda: self._do_zoom(1.25), C["status"], fg=C["text"])
-        self._btn(self._tb, "1:1", self._zoom_reset, C["status"], fg=C["text"])
+        self._btn(self._tb, "−", lambda: self._do_zoom(0.8), C["status"], fg="#cdd6f4")
+        self._btn(self._tb, "+", lambda: self._do_zoom(1.25), C["status"], fg="#cdd6f4")
+        self._btn(self._tb, "1:1", self._zoom_reset, C["status"], fg="#cdd6f4")
         self._add_sep()
 
         # --- Reset ---
