@@ -138,10 +138,15 @@ class App:
         b = tk.Button(p, text=t, font=("Segoe UI",9,"bold"), bg=bg, fg=fg,
                      activebackground=C["accent"], activeforeground="#11111b",
                      relief=tk.RAISED, bd=2, pady=4, padx=6, width=w, cursor="hand2", command=c)
-        b.pack(side=s, padx=1); return b
+        b.pack(side=s, padx=1); self._tb_children.append(b); return b
 
-    def _build(self):
-        self.root.configure(bg=C["bg"])
+    def _add_sep(self):
+        s = tk.Frame(self._tb, bg=C["status"], width=2)
+        s.pack(side=tk.LEFT, padx=3, fill=tk.Y, pady=3)
+        self._tb_children.append(s)
+
+    def _build_menus(self):
+        """Baut die Menüleiste neu (für Farbschema-Wechsel)."""
         mb = tk.Menu(self.root, bg=C["bg"], fg=C["text"],
                      activebackground=C["accent"], activeforeground="#11111b")
         self.root.config(menu=mb)
@@ -160,8 +165,6 @@ class App:
         fm.add_separator()
         fm.add_command(label="❌ Schließen", command=self._close_all)
         fm.add_command(label="Beenden", command=self.root.quit)
-
-        # Einstellungen-Menü
         sm = tk.Menu(mb, tearoff=0, bg=C["bg"], fg=C["text"],
                      activebackground=C["accent"], activeforeground="#11111b")
         mb.add_cascade(label="Einstellungen", menu=sm)
@@ -169,11 +172,16 @@ class App:
         sm.add_command(label="🎨 Farbschema...", command=self._color_dialog)
         sm.add_command(label="⚙️ Allgemein...", command=self._general_dialog)
 
-        tb = tk.Frame(self.root, bg=C["bg"], height=38)
-        tb.pack(fill=tk.X, padx=3, pady=(3,0))
+    def _build(self):
+        self.root.configure(bg=C["bg"])
+        self._build_menus()
+
+        self._tb = tk.Frame(self.root, bg=C["bg"], height=38)
+        self._tb.pack(fill=tk.X, padx=3, pady=(3,0))
+        self._tb_children = []  # für apply_ui
 
         # --- 📂 ÖFFNEN (Dropdown) ---
-        self.btn_open = tk.Button(tb, text="📂 ÖFFNEN", font=("Segoe UI",9,"bold"),
+        self.btn_open = tk.Button(self._tb, text="📂 ÖFFNEN", font=("Segoe UI",9,"bold"),
                                  bg=C["accent"], fg="#11111b", activebackground=C["accent"],
                                  activeforeground="#11111b", relief=tk.RAISED, bd=2,
                                  pady=4, padx=10, cursor="hand2",
@@ -187,30 +195,30 @@ class App:
                                  pady=4, padx=10, cursor="hand2",
                                  command=self._show_save_menu)
         self.btn_save.pack(side=tk.LEFT, padx=1)
-        tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=3, fill=tk.Y, pady=3)
+        self._add_sep()
 
         # --- Modus ---
-        self.btn_fill = self._btn(tb, "Ausfüllen", lambda: self._set_mode("fill"), C["green"])
-        self.btn_edit = self._btn(tb, "Editor", lambda: self._set_mode("edit"), C["status"])
-        tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=3, fill=tk.Y, pady=3)
+        self.btn_fill = self._btn(self._tb, "Ausfüllen", lambda: self._set_mode("fill"), C["green"])
+        self.btn_edit = self._btn(self._tb, "Editor", lambda: self._set_mode("edit"), C["status"])
+        self._add_sep()
 
         # --- Rahmen/Höhe/Raster/Lineal ---
-        self.btn_frame = self._btn(tb, "Rahmen", self._toggle_frames, C["yellow"])
-        self.btn_ruler = self._btn(tb, "Lineal", self._toggle_ruler, C["yellow"])
-        self._btn(tb, "Höhe", self._set_height_dialog, C["yellow"])
-        self._btn(tb, "Raster", self._set_grid_dialog, C["yellow"])
-        self._btn(tb, "Schrift", self._font_dialog, C["cyan"])
-        tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=3, fill=tk.Y, pady=3)
+        self.btn_frame = self._btn(self._tb, "Rahmen", self._toggle_frames, C["yellow"])
+        self.btn_ruler = self._btn(self._tb, "Lineal", self._toggle_ruler, C["yellow"])
+        self._btn(self._tb, "Höhe", self._set_height_dialog, C["yellow"])
+        self._btn(self._tb, "Raster", self._set_grid_dialog, C["yellow"])
+        self._btn(self._tb, "Schrift", self._font_dialog, C["cyan"])
+        self._add_sep()
 
         # --- Drucken / Zoom ---
-        self._btn(tb, "Drucken", self._print_pdf, C["yellow"])
-        self._btn(tb, "−", lambda: self._do_zoom(0.8), C["status"], fg=C["text"])
-        self._btn(tb, "+", lambda: self._do_zoom(1.25), C["status"], fg=C["text"])
-        self._btn(tb, "1:1", self._zoom_reset, C["status"], fg=C["text"])
-        tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=3, fill=tk.Y, pady=3)
+        self._btn(self._tb, "Drucken", self._print_pdf, C["yellow"])
+        self._btn(self._tb, "−", lambda: self._do_zoom(0.8), C["status"], fg=C["text"])
+        self._btn(self._tb, "+", lambda: self._do_zoom(1.25), C["status"], fg=C["text"])
+        self._btn(self._tb, "1:1", self._zoom_reset, C["status"], fg=C["text"])
+        self._add_sep()
 
         # --- Reset ---
-        self._btn(tb, "Zurücksetzen", self._reset, C["red"])
+        self._btn(self._tb, "Zurücksetzen", self._reset, C["red"])
 
         self.mf = tk.Frame(self.root, bg=C["canvas"])
         self.mf.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
@@ -426,6 +434,17 @@ class App:
             self.mf.configure(bg=C["canvas"])
             self.cv.configure(bg=C["canvas"])
             self.sb.configure(bg=C["status"], fg=C["text"])
+            self._tb.configure(bg=C["bg"])
+            # Toolbar-Buttons neu einfärben (die ohne eigenen bg-Attribut)
+            for w in self._tb_children:
+                if isinstance(w, tk.Button):
+                    # Nur Buttons ohne grün/rot/gelb/cyan — die sind Modus-Buttons
+                    pass
+                elif isinstance(w, tk.Frame):
+                    w.configure(bg=C["status"])
+            # Menüleiste
+            self.root.config(menu=None)
+            self._build_menus()
             self._render()
             self._status()
 
