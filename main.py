@@ -1433,10 +1433,10 @@ class App:
         # Stempel auf PDF malen
         for s in self._current_stamps():
             try:
-                stempel_img = self._stempel_bild(s, scale=300/72 / SCALE)
-                # Position in Pixeln (SCALE = 300/72)
-                x = int(s.x * SCALE)
-                y = int(s.y * SCALE)
+                stempel_img = self._stempel_bild(s, scale=1.0)
+                # s.x/s.y sind bereits 300-DPI-Pixel — direkt übernehmen
+                x = int(s.x)
+                y = int(s.y)
                 if stempel_img.mode == 'RGBA':
                     # Alpha-Kanal als Maske nutzen
                     img.paste(stempel_img, (x, y), stempel_img)
@@ -1494,7 +1494,6 @@ class App:
         pad = int(12 * scale)
         w = tw + pad * 2
         h = th + pad * 2
-        s.w, s.h = int(w / scale), int(h / scale)  # Originalgröße für Koordinaten
 
         img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
         d = ImageDraw.Draw(img)
