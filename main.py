@@ -1344,9 +1344,9 @@ class App:
     def _mouse_help(self):
         """Gibt kontextabhängige Maus-Hilfe für die untere Statusleiste."""
         if self.mode == "fill":
-            return "🖱️ Links=Text eingeben/Check setzen | Mitte=nix | Rechts=Pan | Rad=Zoom"
+            return "🖱️ Linke Taste: Text eingeben oder Häkchen setzen | Rechte Taste: Bild verschieben | Mausrad: Zoom"
         else:  # edit
-            return "🖱️ Links=Feld anlegen | Strg+Links=Feld verschieben | Mitte=Feld verschieben | Rechts=Pan | Rad=Zoom | Rechts+Feld=Löschen"
+            return "🖱️ Links: Feld anlegen | Strg+Klick: Feld verschieben | Mitte: Feld verschieben | Rechts: Bild verschieben | Rad: Zoom | Rechts auf Feld: Löschen"
 
     def _status(self):
         pdf = os.path.basename(self.pdf_path) if self.pdf_path else "Kein PDF"
