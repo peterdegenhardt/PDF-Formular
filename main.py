@@ -90,6 +90,33 @@ class FieldRect:
                    label=d.get("label", d.get("name", "")), ftype=d.get("type", "text"))
 
 
+class Stamp:
+    """Ein Stempel auf dem PDF (GEPRÜFT, GENEHMIGT, etc.)."""
+    STANDARD_STEMPEL = [
+        ("GEPRÜFT", "#2ecc71", "grün"),
+        ("GENEHMIGT", "#2196F3", "blau"),
+        ("FREIGEGEBEN", "#4CAF50", "grün"),
+        ("ABGELEHNT", "#e74c3c", "rot"),
+        ("GESPERRT", "#ff9800", "orange"),
+        ("NICHT GEPRÜFT", "#9e9e9e", "grau"),
+    ]
+
+    def __init__(self, x=0, y=0, text="GEPRÜFT", color="#2ecc71", rotation=15):
+        self.x, self.y = x, y
+        self.text = text
+        self.color = color
+        self.rotation = rotation  # Grad
+        self.w, self.h = 140, 50  # Standardgröße
+
+    def contains(self, px, py):
+        # Vereinfachte Prüfung (ohne Rotation)
+        return self.x <= px <= self.x + self.w and self.y <= py <= self.y + self.h
+
+    def to_dict(self):
+        return {"x": self.x, "y": self.y, "text": self.text,
+                "color": self.color, "rotation": self.rotation}
+
+
 class App:
     def __init__(self, root):
         self.root = root
@@ -108,6 +135,7 @@ class App:
         self.page_count = 0
         self.current_page = 0
         self.fields = {}  # dict: {"0": [FieldRect, ...], "1": [...]}
+        self.stamps = {}  # dict: {"0": [Stamp, ...], "1": [...]}
         self.selected = None
         self.template_path = self.template_name = None
         self.project_path = self.project_name = None
@@ -408,6 +436,8 @@ class App:
         key = str(page)
         if key not in self.fields:
             self.fields[key] = []
+        if key not in self.stamps:
+            self.stamps[key] = []
         self.selected = None
         self._fit_zoom()
         self._render()
@@ -507,6 +537,7 @@ class App:
         self.pdf_path = None
         self.pdf_image = self.pdf_tk = None
         self.fields = {}
+        self.stamps = {}
         self.current_page = 0
         self.page_count = 0
         self.selected = None
@@ -753,6 +784,8 @@ class App:
             key = str(self.current_page)
             if key not in self.fields:
                 self.fields[key] = []
+            if key not in self.stamps:
+                self.stamps[key] = []
             self._fit_zoom(); self._render(); self._status()
         except Exception as e: messagebox.showerror("Fehler", f"PDF: {e}")
 
@@ -957,6 +990,10 @@ class App:
 
             for f in self._current_fields(): self._draw(f)
 
+            # Stempel zeichnen
+            for s in self._current_stamps():
+                self._draw_stempel(s)
+
             self.cv.create_text(cw-10,10, anchor=tk.NE, text=f"{self.zoom*100:.0f}%",
                                fill="white", font=("Arial",10))
         except Exception as e: print(f"Render: {e}")
@@ -1049,11 +1086,19 @@ class App:
         self.cv.focus_set()
 
     def _click(self, e):
-        """Linksklick ohne Strg: Edit → neues Feld / Fill → auswählen"""
+        """Linksklick ohne Strg: Edit → neues Feld / Fill → auswählen / Stempel → setzen"""
         self._stop_typing()
         self._drag_mode = None  # noch kein Modus
         self.cv.delete("drag")
         px, py = self._ic(e)
+
+        # Werkzeug aus Toolbox?
+        if self.selected_tool == "Stempel":
+            self._stempel_dialog(int(px), int(py))
+            self.selected_tool = None
+            self._set_tool("Pfeil")  # zurück zu Pfeil
+            return
+
         if self.mode == "edit":
             self._nf_px, self._nf_py = px, py
             self._drag_mode = "newfield"
@@ -1378,6 +1423,20 @@ class App:
             elif f.type == "radio" and f.value in (True,"True","true","1"):
                 d.ellipse([f.x1+4,f.y1+4,f.x1+11,f.y1+11], fill=(0,0,0))
 
+        # Stempel auf PDF malen
+        for s in self._current_stamps():
+            # Stempel-Rahmen
+            d.rectangle([s.x, s.y, s.x + s.w, s.y + s.h], outline=s.color, width=3)
+            d.rectangle([s.x + 3, s.y + 3, s.x + s.w - 3, s.y + s.h - 3], outline=s.color, width=1)
+            # Stempel-Text (PIL unterstützt Rotation)
+            try:
+                font = get_font(16, "Liberation Sans")
+                from PIL import ImageFont
+                stempel_font = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", 18)
+                d.text((s.x + s.w//2 - 40, s.y + s.h//2 - 10), s.text, fill=s.color, font=stempel_font)
+            except:
+                pass  # Fallback: kein Text
+
         tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
         img.save(tmp.name, "PDF", resolution=300)
         return tmp.name
@@ -1408,6 +1467,85 @@ class App:
 
     def _mw(self, e): self._do_zoom(1.1 if e.delta > 0 else 0.9)
 
+    def _current_stamps(self):
+        """Gibt die Stempel-Liste der aktuellen Seite zurück."""
+        return self.stamps.get(str(self.current_page), [])
+
+    def _draw_stempel(self, s):
+        """Zeichnet einen Stempel auf dem Canvas."""
+        z = self.zoom
+        x, y = self.ox + int(s.x * z), self.oy + int(s.y * z)
+        w, h = int(s.w * z), int(s.h * z)
+
+        # Stempel-Hintergrund (rundes Rechteck)
+        self.cv.create_rectangle(x, y, x + w, y + h,
+                                outline=s.color, fill="", width=max(2, int(3*z)),
+                                tags="stempel")
+        # Zweiter Rand
+        self.cv.create_rectangle(x + 3, y + 3, x + w - 3, y + h - 3,
+                                outline=s.color, fill="", width=max(1, int(1*z)),
+                                tags="stempel")
+        # Text (mit Rotation über einen schrägen Strich simuliert, da tkinter keine Rotation kann)
+        fs = max(10, int(14 * z))
+        self.cv.create_text(x + w//2, y + h//2, text=s.text,
+                           fill=s.color, font=("Courier", fs, "bold"),
+                           angle=s.rotation,
+                           tags="stempel")
+        # Optional: kleiner Unterstrich
+        self.cv.create_line(x + 10, y + h - 8, x + w - 10, y + h - 8,
+                           fill=s.color, width=max(1, int(2*z)), tags="stempel")
+
+    def _stempel_dialog(self, x, y):
+        """Zeigt Stempel-Auswahl und platziert einen Stempel auf der aktuellen Seite."""
+        win = tk.Toplevel(self.root)
+        win.title("Stempel auswählen")
+        win.configure(bg=C["bg"])
+        win.transient(self.root)
+        win.grab_set()
+        win.resizable(False, False)
+        win.attributes("-topmost", True)
+
+        rx, ry = self.root.winfo_x(), self.root.winfo_y()
+        rw, rh = self.root.winfo_width(), self.root.winfo_height()
+        ww, wh = 340, 300
+        win.geometry(f"{ww}x{wh}+{rx+rw//2-ww//2}+{ry+rh//2-wh//2}")
+
+        tk.Label(win, text="Stempel auswählen:", bg=C["bg"], fg=C["text"],
+                font=("Segoe UI",11,"bold")).pack(pady=(12,6))
+
+        frame = tk.Frame(win, bg=C["bg"])
+        frame.pack(padx=12, fill=tk.BOTH, expand=True)
+
+        def platziere(text, color):
+            key = str(self.current_page)
+            if key not in self.stamps:
+                self.stamps[key] = []
+            self.stamps[key].append(Stamp(x=x, y=y, text=text, color=color))
+            win.destroy()
+            self._render()
+            self._status()
+
+        for text, color, name in Stamp.STANDARD_STEMPEL:
+            btn_frame = tk.Frame(frame, bg=color, bd=1, relief=tk.RAISED, cursor="hand2")
+            btn_frame.pack(fill=tk.X, pady=3)
+            btn_frame.bind("<Button-1>", lambda e, t=text, c=color: platziere(t, c))
+
+            # Vorschau-Stempel
+            preview = tk.Label(btn_frame, text=f"  {text}  ", bg=color, fg="white",
+                              font=("Courier",14,"bold"), padx=6, pady=4)
+            preview.pack(side=tk.LEFT)
+            preview.bind("<Button-1>", lambda e, t=text, c=color: platziere(t, c))
+
+            name_lbl = tk.Label(btn_frame, text=f"({name})", bg=color, fg="white",
+                               font=("Segoe UI",8))
+            name_lbl.pack(side=tk.RIGHT, padx=8)
+            name_lbl.bind("<Button-1>", lambda e, t=text, c=color: platziere(t, c))
+
+        tk.Button(win, text="Abbrechen", command=win.destroy,
+                 bg=C["red"], fg="#11111b", font=("Segoe UI",9,"bold"),
+                 bd=0, padx=20, pady=4, cursor="hand2").pack(pady=(8,10))
+        win.bind("<Escape>", lambda e: win.destroy())
+
     def _mouse_help(self):
         """Gibt kontextabhängige Maus-Hilfe für die untere Statusleiste."""
         if self.selected_tool and self.selected_tool != "Pfeil":
@@ -1422,13 +1560,16 @@ class App:
         mt = "EDITOR" if self.mode=="edit" else "AUSFUELLEN"
         cur = self._current_fields()
         fc = len(cur)
+        stamps = self._current_stamps()
+        sc = len(stamps)
         sel = f" | {self.selected.label}" if self.selected else ""
         tpl = f" | Vorlage:{self.template_name}" if self.template_name else ""
         proj = f" | Projekt:{self.project_name}" if self.project_name else ""
         akt = f" | {self.active_field.label}" if self.active_field else ""
         fr = " | Rahmen AUS" if not self.show_frames else ""
         pages = f" | Seite {self.current_page+1}/{self.page_count}" if self.page_count > 1 else ""
-        self.sb.config(text=f"{mt} | {pdf}{tpl}{proj} | {fc} Feld(er){sel}{akt}{fr}{pages} | Raster {self.grid_size}px")
+        stempel = f" | {sc} Stempel" if sc else ""
+        self.sb.config(text=f"{mt} | {pdf}{tpl}{proj} | {fc} Feld(er){stempel}{sel}{akt}{fr}{pages} | Raster {self.grid_size}px")
         # Maus-Hilfe aktualisieren
         if hasattr(self, 'sb_mouse'):
             self.sb_mouse.config(text=self._mouse_help())
