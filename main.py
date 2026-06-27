@@ -144,11 +144,6 @@ class App:
                                  command=self._show_open_menu)
         self.btn_open.pack(side=tk.LEFT, padx=1)
 
-        # --- Modus ---
-        self.btn_fill = self._btn(tb, "Ausfüllen", lambda: self._set_mode("fill"), C["green"])
-        self.btn_edit = self._btn(tb, "Editor", lambda: self._set_mode("edit"), C["status"])
-        tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=3, fill=tk.Y, pady=3)
-
         # --- 💾 SPEICHERN (Dropdown) ---
         self.btn_save = tk.Button(tb, text="💾 SPEICHERN", font=("Segoe UI",9,"bold"),
                                  bg=C["green"], fg="#11111b", activebackground=C["green"],
@@ -156,6 +151,11 @@ class App:
                                  pady=4, padx=10, cursor="hand2",
                                  command=self._show_save_menu)
         self.btn_save.pack(side=tk.LEFT, padx=1)
+        tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=3, fill=tk.Y, pady=3)
+
+        # --- Modus ---
+        self.btn_fill = self._btn(tb, "Ausfüllen", lambda: self._set_mode("fill"), C["green"])
+        self.btn_edit = self._btn(tb, "Editor", lambda: self._set_mode("edit"), C["status"])
         tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=3, fill=tk.Y, pady=3)
 
         # --- Rahmen/Höhe/Raster/Lineal ---
@@ -201,6 +201,9 @@ class App:
         self.cv.bind("<ButtonRelease-3>", self._right_release)
         self.cv.bind("<Key>", self._key)
         self.root.bind("<Escape>", lambda e: self._stop_typing())
+        # Popup-Menüs bei Klick irgendwo schließen
+        self.root.bind("<Button-1>", self._close_menus, add="+")
+        self.root.bind("<Button-3>", self._close_menus, add="+")
 
     def _set_height_dialog(self):
         from tkinter import simpledialog
@@ -351,28 +354,41 @@ class App:
         messagebox.showinfo("Gespeichert", f"Projekt '{name}', {n_val} Feld(er) ausgefüllt"); self._status()
 
     # ─── Popup-Menüs ──────────────────────────────────────────
+    def _close_menus(self, event=None):
+        """Schließt alle offenen Popup-Menüs."""
+        if hasattr(self, '_active_menu') and self._active_menu:
+            try:
+                self._active_menu.unpost()
+            except:
+                pass
+            self._active_menu = None
+
     def _show_open_menu(self):
         """Dropdown-Menü mit den 3 Öffnen-Optionen."""
+        self._close_menus()
         menu = tk.Menu(self.root, tearoff=0, bg=C["bg"], fg=C["text"],
                        activebackground=C["accent"], activeforeground="#11111b",
                        font=("Segoe UI",10))
-        menu.add_command(label="📄 PDF öffnen", command=self._open_pdf)
-        menu.add_command(label="📋 Vorlage öffnen", command=self._load_template)
-        menu.add_command(label="🗂️ Projekt öffnen", command=self._load_project)
+        menu.add_command(label="📄 PDF öffnen", command=lambda: (self._close_menus(), self._open_pdf()))
+        menu.add_command(label="📋 Vorlage öffnen", command=lambda: (self._close_menus(), self._load_template()))
+        menu.add_command(label="🗂️ Projekt öffnen", command=lambda: (self._close_menus(), self._load_project()))
         x = self.btn_open.winfo_rootx()
         y = self.btn_open.winfo_rooty() + self.btn_open.winfo_height()
+        self._active_menu = menu
         menu.post(x, y)
 
     def _show_save_menu(self):
         """Dropdown-Menü mit den 3 Speichern-Optionen."""
+        self._close_menus()
         menu = tk.Menu(self.root, tearoff=0, bg=C["bg"], fg=C["text"],
                        activebackground=C["green"], activeforeground="#11111b",
                        font=("Segoe UI",10))
-        menu.add_command(label="📄 PDF speichern", command=self._save_pdf)
-        menu.add_command(label="📋 Vorlage speichern", command=self._save_template)
-        menu.add_command(label="🗂️ Projekt speichern", command=self._save_project)
+        menu.add_command(label="📄 PDF speichern", command=lambda: (self._close_menus(), self._save_pdf()))
+        menu.add_command(label="📋 Vorlage speichern", command=lambda: (self._close_menus(), self._save_template()))
+        menu.add_command(label="🗂️ Projekt speichern", command=lambda: (self._close_menus(), self._save_project()))
         x = self.btn_save.winfo_rootx()
         y = self.btn_save.winfo_rooty() + self.btn_save.winfo_height()
+        self._active_menu = menu
         menu.post(x, y)
 
     # ─── Zoom ─────────────────────────────────────────────────
