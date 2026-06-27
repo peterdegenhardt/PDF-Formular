@@ -134,7 +134,9 @@ class App:
         self._build()
         self._set_mode("fill")
 
-    def _btn(self, p, t, c, bg, s=tk.LEFT, fg="#11111b", w=0):
+    def _btn(self, p, t, c, bg, s=tk.LEFT, fg=None, w=0):
+        if fg is None:
+            fg = C["text"]
         b = tk.Button(p, text=t, font=("Segoe UI",9,"bold"), bg=bg, fg=fg,
                      activebackground=C["accent"], activeforeground="#11111b",
                      relief=tk.RAISED, bd=2, pady=4, padx=6, width=w, cursor="hand2", command=c)
