@@ -585,7 +585,7 @@ class App:
             txt = str(f.value)
             fc = self.font_color if self.font_color else "#000000"
             # Unten bündig: Oberkante des Textes = y2 - fs - 5 (5px Abstand unten)
-            y_top = y2 - fs - 5
+            y_top = y2 - fs - 10
             # Schriftname für tkinter: Liberation Sans → Liberation Sans (tkinter kann das)
             # Fallback: wenn unbekannt, nimm "Liberation Sans"
             fn_map = {
