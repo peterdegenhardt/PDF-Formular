@@ -118,6 +118,18 @@ class Stamp:
                 "color": self.color, "rotation": self.rotation}
 
 
+class Arrow:
+    """Ein Pfeil auf dem PDF von (x1,y1) nach (x2,y2)."""
+    def __init__(self, x1=0, y1=0, x2=0, y2=0, color="#e74c3c"):
+        self.x1, self.y1 = x1, y1
+        self.x2, self.y2 = x2, y2
+        self.color = color
+
+    def to_dict(self):
+        return {"x1": self.x1, "y1": self.y1,
+                "x2": self.x2, "y2": self.y2, "color": self.color}
+
+
 class App:
     def __init__(self, root):
         self.root = root
@@ -137,6 +149,7 @@ class App:
         self.current_page = 0
         self.fields = {}  # dict: {"0": [FieldRect, ...], "1": [...]}
         self.stamps = {}  # dict: {"0": [Stamp, ...], "1": [...]}
+        self.arrows = {}  # dict: {"0": [Arrow, ...], "1": [...]}
         self.selected = None
         self.template_path = self.template_name = None
         self.project_path = self.project_name = None
@@ -441,6 +454,8 @@ class App:
             self.fields[key] = []
         if key not in self.stamps:
             self.stamps[key] = []
+        if key not in self.arrows:
+            self.arrows[key] = []
         self.selected = None
         self._fit_zoom()
         self._render()
@@ -541,6 +556,7 @@ class App:
         self.pdf_image = self.pdf_tk = None
         self.fields = {}
         self.stamps = {}
+        self.arrows = {}
         self._stempel_images = {}
         self._stempel_tk = {}
         self.current_page = 0
@@ -791,6 +807,8 @@ class App:
                 self.fields[key] = []
             if key not in self.stamps:
                 self.stamps[key] = []
+            if key not in self.arrows:
+                self.arrows[key] = []
             self._fit_zoom(); self._render(); self._status()
         except Exception as e: messagebox.showerror("Fehler", f"PDF: {e}")
 
@@ -1002,6 +1020,13 @@ class App:
                 except Exception as e:
                     print(f"Stempel-Fehler: {e}")
 
+            # Pfeile zeichnen
+            for a in self._current_arrows():
+                try:
+                    self._draw_arrow(a)
+                except Exception as e:
+                    print(f"Pfeil-Fehler: {e}")
+
             self.cv.create_text(cw-10,10, anchor=tk.NE, text=f"{self.zoom*100:.0f}%",
                                fill="white", font=("Arial",10))
         except Exception as e: print(f"Render: {e}")
@@ -1107,6 +1132,12 @@ class App:
             self._set_tool("Pfeil")  # zurück zu Pfeil
             return
 
+        if self.selected_tool == "Pfeil":
+            # Pfeil zeichnen: Klick = Start, Drag = Ende
+            self._arrow_start = (int(px), int(py))
+            self._drag_mode = "arrow"
+            return
+
         if self.mode == "edit":
             self._nf_px, self._nf_py = px, py
             self._drag_mode = "newfield"
@@ -1205,6 +1236,17 @@ class App:
                 outline=C["yellow"], fill="", width=3, dash=(4, 4), tags="drag"
             )
             self._render()
+        elif dm == "arrow":
+            px, py = self._ic(e)
+            x1, y1 = self._arrow_start
+            if abs(px - x1) < 3 and abs(py - y1) < 3:
+                return
+            self.cv.delete("drag")
+            z = self.zoom
+            # Vorschau: Linie + Pfeilspitze
+            ox, oy = self.ox, self.oy
+            self._draw_arrow_preview(ox + int(x1 * z), oy + int(y1 * z),
+                                     ox + int(px * z), oy + int(py * z))
 
     def _release_b1(self, e):
         """Button-1 loslassen: je nach drag_mode"""
@@ -1236,6 +1278,16 @@ class App:
         elif dm == "move":
             if hasattr(self, '_mv_field') and self._mv_field:
                 self._mv_field = None
+                self._render()
+                self._status()
+        elif dm == "arrow" and e:
+            px, py = self._ic(e)
+            x1, y1 = self._arrow_start
+            if abs(px - x1) >= 8 or abs(py - y1) >= 8:
+                key = str(self.current_page)
+                if key not in self.arrows:
+                    self.arrows[key] = []
+                self.arrows[key].append(Arrow(x1=x1, y1=y1, x2=int(px), y2=int(py)))
                 self._render()
                 self._status()
 
@@ -1446,6 +1498,13 @@ class App:
             except Exception as e:
                 print(f"Stempel-PDF-Fehler: {e}")
 
+        # Pfeile auf PDF malen
+        for a in self._current_arrows():
+            try:
+                self._draw_arrow_pdf(d, a)
+            except Exception as e:
+                print(f"Pfeil-PDF-Fehler: {e}")
+
         tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
         img.save(tmp.name, "PDF", resolution=300)
         return tmp.name
@@ -1479,6 +1538,70 @@ class App:
     def _current_stamps(self):
         """Gibt die Stempel-Liste der aktuellen Seite zurück."""
         return self.stamps.get(str(self.current_page), [])
+
+    def _current_arrows(self):
+        """Gibt die Pfeil-Liste der aktuellen Seite zurück."""
+        return self.arrows.get(str(self.current_page), [])
+
+    def _draw_arrow(self, a):
+        """Zeichnet einen Pfeil auf dem Canvas."""
+        z, ox, oy = self.zoom, self.ox, self.oy
+        x1 = ox + int(a.x1 * z)
+        y1 = oy + int(a.y1 * z)
+        x2 = ox + int(a.x2 * z)
+        y2 = oy + int(a.y2 * z)
+        self._draw_arrow_line(self.cv, x1, y1, x2, y2, a.color, tags="f")
+
+    def _draw_arrow_preview(self, x1, y1, x2, y2):
+        """Zeichnet eine Pfeil-Vorschau während des Ziehens (Drag)."""
+        self._draw_arrow_line(self.cv, x1, y1, x2, y2, C["accent"], width=2, dash=(4, 4), tags="drag")
+
+    def _draw_arrow_pdf(self, d, a):
+        """Malt einen Pfeil auf das 300-DPI-PDF-Bild (ImageDraw)."""
+        from math import atan2, cos, sin, pi, sqrt
+        self._draw_arrow_line_pil(d, a.x1, a.y1, a.x2, a.y2, a.color)
+
+    @staticmethod
+    def _draw_arrow_line(cv, x1, y1, x2, y2, color, width=2, tags="f", dash=None):
+        """Zeichnet eine Pfeillinie + Pfeilspitze auf dem tkinter Canvas."""
+        from math import atan2, cos, sin, pi
+        dx, dy = x2 - x1, y2 - y1
+        if abs(dx) < 2 and abs(dy) < 2:
+            cv.create_line(x1, y1, x2, y2, fill=color, width=width, tags=tags)
+            return
+        angle = atan2(dy, dx)
+        # Pfeil-Schaft
+        kw = {"fill": color, "width": width, "tags": tags}
+        if dash:
+            kw["dash"] = dash
+        cv.create_line(x1, y1, x2, y2, **kw)
+        # Pfeilspitze (Dreieck)
+        head_len = max(12, int(width * 6))
+        head_angle = pi / 6  # 30 Grad
+        p1x = x2 - head_len * cos(angle - head_angle)
+        p1y = y2 - head_len * sin(angle - head_angle)
+        p2x = x2 - head_len * cos(angle + head_angle)
+        p2y = y2 - head_len * sin(angle + head_angle)
+        cv.create_polygon(x2, y2, p1x, p1y, p2x, p2y,
+                          fill=color, outline=color, width=1, tags=tags)
+
+    @staticmethod
+    def _draw_arrow_line_pil(d, x1, y1, x2, y2, color, width=3):
+        """Malt eine Pfeillinie + Pfeilspitze auf PIL ImageDraw."""
+        from math import atan2, cos, sin, pi
+        dx, dy = x2 - x1, y2 - y1
+        if abs(dx) < 2 and abs(dy) < 2:
+            d.line([(x1, y1), (x2, y2)], fill=color, width=width)
+            return
+        angle = atan2(dy, dx)
+        d.line([(x1, y1), (x2, y2)], fill=color, width=width)
+        head_len = max(16, int(width * 6))
+        head_angle = pi / 6
+        p1 = (x2 - head_len * cos(angle - head_angle),
+              y2 - head_len * sin(angle - head_angle))
+        p2 = (x2 - head_len * cos(angle + head_angle),
+              y2 - head_len * sin(angle + head_angle))
+        d.polygon([(x2, y2), p1, p2], fill=color, outline=color)
 
     def _stempel_bild(self, s, scale=1.0):
         """Erzeugt ein PIL-Image des Stempels (in 300-DPI-Auflösung mit optionalem Skalierungsfaktor)."""
@@ -1602,6 +1725,8 @@ class App:
         fc = len(cur)
         stamps = self._current_stamps()
         sc = len(stamps)
+        arrows = self._current_arrows()
+        ac = len(arrows)
         sel = f" | {self.selected.label}" if self.selected else ""
         tpl = f" | Vorlage:{self.template_name}" if self.template_name else ""
         proj = f" | Projekt:{self.project_name}" if self.project_name else ""
@@ -1609,7 +1734,8 @@ class App:
         fr = " | Rahmen AUS" if not self.show_frames else ""
         pages = f" | Seite {self.current_page+1}/{self.page_count}" if self.page_count > 1 else ""
         stempel = f" | {sc} Stempel" if sc else ""
-        self.sb.config(text=f"{mt} | {pdf}{tpl}{proj} | {fc} Feld(er){stempel}{sel}{akt}{fr}{pages} | Raster {self.grid_size}px")
+        pfeile = f" | {ac} Pfeil(e)" if ac else ""
+        self.sb.config(text=f"{mt} | {pdf}{tpl}{proj} | {fc} Feld(er){stempel}{pfeile}{sel}{akt}{fr}{pages} | Raster {self.grid_size}px")
         # Maus-Hilfe aktualisieren
         if hasattr(self, 'sb_mouse'):
             self.sb_mouse.config(text=self._mouse_help())
