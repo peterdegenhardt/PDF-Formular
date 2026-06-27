@@ -584,15 +584,8 @@ class App:
             fs = max(8, int(pt * SCALE * z * 0.8))
             txt = str(f.value)
             fc = self.font_color if self.font_color else "#000000"
-            # Echte Schrifthöhe via PIL messen (inkl. Unterlängen wie g,j,p)
-            ref_font = get_font(pt, self.font_name)
-            ref_bbox = ref_font.getbbox('Ag')
-            text_h = ref_bbox[3] - ref_bbox[1]  # Gesamthöhe inkl. Unterlängen
-            pil_offset = ref_bbox[1]  # negativ: Unterlängen-Anteil
-            # PIL-Höhe auf Canvas-Zoom umrechnen
-            canvas_text_h = int(text_h * SCALE * z * 0.8 / pt)
-            # Unten bündig, aber Unterlängen ragen unten raus → Basislinie anpassen
-            y_top = y2 - canvas_text_h - 8 + int(pil_offset * SCALE * z * 0.8 / pt)
+            # Unten bündig, mit Abzug für Unterlängen (g,j,p,q,y) im Canvas
+            y_top = y2 - fs - 6
             # Schriftname für tkinter: Liberation Sans → Liberation Sans (tkinter kann das)
             # Fallback: wenn unbekannt, nimm "Liberation Sans"
             fn_map = {
