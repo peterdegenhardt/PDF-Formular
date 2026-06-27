@@ -585,7 +585,7 @@ class App:
             txt = str(f.value)
             fc = self.font_color if self.font_color else "#000000"
             # Unten bündig: Oberkante des Textes = y2 - fs - 5 (5px Abstand unten)
-            y_top = y2 - fs - 7
+            y_top = y2 - fs - 8
             # Schriftname für tkinter: Liberation Sans → Liberation Sans (tkinter kann das)
             # Fallback: wenn unbekannt, nimm "Liberation Sans"
             fn_map = {
@@ -961,7 +961,7 @@ class App:
                 pil_offset = ref_bbox[1]
                 text_h = ref_bbox[3] - ref_bbox[1]
                 # Unten bündig: Unterkante Text = Unterkante Feld - 2px
-                draw_y = f.y2 - text_h - 2 - pil_offset
+                draw_y = f.y2 - text_h - 1 - pil_offset
                 d.text((f.x1 + 2, draw_y), str(f.value), fill=fill_color, font=font)
             elif f.type == "checkbox" and f.value in (True,"True","true","1"):
                 for i in range(2):
