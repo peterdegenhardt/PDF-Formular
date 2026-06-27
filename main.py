@@ -105,7 +105,9 @@ class App:
         self.zoom = 0.35
         self.ox = self.oy = 0
         self.pdf_path = None
-        self.fields = []
+        self.page_count = 0
+        self.current_page = 0
+        self.fields = {}  # dict: {"0": [FieldRect, ...], "1": [...]}
         self.selected = None
         self.template_path = self.template_name = None
         self.project_path = self.project_name = None
@@ -220,6 +222,13 @@ class App:
         # --- Reset ---
         self._btn(self._tb, "Zurücksetzen", self._reset, C["red"])
 
+        # --- Seiten-Navigation (rechtsbündig) ---
+        self.page_label = tk.Label(self._tb, text="Seite ? / ?", font=("Segoe UI",9,"bold"),
+                                   bg=C["bg"], fg=C["text"])
+        self.page_label.pack(side=tk.RIGHT, padx=6)
+        self.btn_next = self._btn(self._tb, "➡", self._next_page, C["accent"], fg="#11111b")
+        self.btn_prev = self._btn(self._tb, "⬅", self._prev_page, C["accent"], fg="#11111b")
+
         self.mf = tk.Frame(self.root, bg=C["canvas"])
         self.mf.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
         self.cv = tk.Canvas(self.mf, bg=C["canvas"], cursor="arrow",
@@ -260,7 +269,7 @@ class App:
             old_h = self.frame_height
             self.frame_height = val
             # Änderungsdelta für jedes Feld: Oberkante wandert nach oben/unten
-            for f in self.fields:
+            for f in self._current_fields():
                 f.y1 = f.y2 - self.frame_height  # wächst nach oben
             self._render()
             self._status()
@@ -274,6 +283,41 @@ class App:
         if val is not None:
             self.grid_size = val
             self._status()
+
+    def _current_fields(self):
+        """Gibt die Feld-Liste der aktuellen Seite zurück (oder leere Liste)."""
+        return self.fields.get(str(self.current_page), [])
+
+    def _goto_page(self, page):
+        """Wechselt zu einer bestimmten Seite."""
+        if not self.pdf_path or page < 0 or page >= self.page_count:
+            return
+        if self.dragging:
+            self._release_b1(None)
+        self._stop_typing()
+        self.current_page = page
+        try:
+            pdf = pdfium.PdfDocument(self.pdf_path)
+            bm = pdf[page].render(scale=300/72)
+            self.pdf_image = bm.to_pil(); pdf.close()
+        except Exception as e:
+            messagebox.showerror("Fehler", f"Seite {page+1}: {e}")
+            return
+        key = str(page)
+        if key not in self.fields:
+            self.fields[key] = []
+        self.selected = None
+        self._fit_zoom()
+        self._render()
+        self._status()
+
+    def _prev_page(self):
+        if self.current_page > 0:
+            self._goto_page(self.current_page - 1)
+
+    def _next_page(self):
+        if self.current_page < self.page_count - 1:
+            self._goto_page(self.current_page + 1)
 
     def _font_dialog(self):
         """Dialog für Schriftart, -größe und -farbe der Textfelder."""
@@ -360,7 +404,9 @@ class App:
         self._stop_typing()
         self.pdf_path = None
         self.pdf_image = self.pdf_tk = None
-        self.fields.clear()
+        self.fields = {}
+        self.current_page = 0
+        self.page_count = 0
         self.selected = None
         self.template_path = self.template_name = None
         self.project_path = self.project_name = None
@@ -437,6 +483,9 @@ class App:
             self.cv.configure(bg=C["canvas"])
             self.sb.configure(bg=C["status"], fg=C["text"])
             self._tb.configure(bg=C["bg"])
+            # Page-Label einfärben
+            if hasattr(self, 'page_label'):
+                self.page_label.configure(bg=C["bg"], fg=C["text"])
             # Toolbar-Trennstriche neu einfärben (Buttons bleiben unverändert)
             for w in self._tb_children:
                 if isinstance(w, tk.Frame):
@@ -508,7 +557,7 @@ class App:
             self.grid_size = grid_var.get()
             old_h = self.frame_height
             self.frame_height = height_var.get()
-            for f in self.fields:
+            for f in self._current_fields():
                 f.y1 = f.y2 - self.frame_height
             self._render()
             self._status()
@@ -575,8 +624,14 @@ class App:
         self.export_font = get_font(self.font_size, self.font_name)
         try:
             pdf = pdfium.PdfDocument(path)
-            bm = pdf[0].render(scale=300/72)
+            self.page_count = len(pdf)
+            self.current_page = 0
+            bm = pdf[self.current_page].render(scale=300/72)
             self.pdf_image = bm.to_pil(); pdf.close()
+            # Felder für diese Seite initialisieren falls nicht vorhanden
+            key = str(self.current_page)
+            if key not in self.fields:
+                self.fields[key] = []
             self._fit_zoom(); self._render(); self._status()
         except Exception as e: messagebox.showerror("Fehler", f"PDF: {e}")
 
@@ -586,27 +641,36 @@ class App:
         if not p: return
         try:
             with open(p, encoding='utf-8') as f: data = json.load(f)
-            self.fields.clear()
-            for item in data.get("fields", data.get("items", data if isinstance(data,list) else [])):
-                self.fields.append(FieldRect.from_dict(item))
+            raw = data.get("fields", data.get("items", data if isinstance(data,list) else []))
+            if isinstance(raw, dict):
+                # Neue Struktur: fields pro Seite
+                self.fields = {}
+                for page_key, flist in raw.items():
+                    self.fields[page_key] = [FieldRect.from_dict(item) for item in flist]
+            else:
+                # Alte Struktur: flache Liste → aktuelle Seite
+                self.fields = {str(self.current_page): [FieldRect.from_dict(item) for item in raw]}
             self.selected = None
             self.template_path, self.template_name = p, data.get("name", os.path.basename(p))
             self._render(); self._status()
-            messagebox.showinfo("Geladen", f"'{self.template_name}', {len(self.fields)} Felder")
+            total = sum(len(v) for v in self.fields.values())
+            messagebox.showinfo("Geladen", f"'{self.template_name}', {total} Felder ({len(self.fields)} Seiten)")
         except Exception as e: messagebox.showerror("Fehler", f"Vorlage: {e}")
 
     def _save_template(self):
-        if not self.fields: return messagebox.showwarning("Leer", "Keine Felder.")
+        cur = self._current_fields()
+        if not cur: return messagebox.showwarning("Leer", "Keine Felder auf aktueller Seite.")
         name = simpledialog.askstring("Name", "Vorlagenname:", initialvalue=self.template_name or "Neu")
         if not name: return
         p = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON","*.json")],
                                          initialfile=f"{name.lower().replace(' ','_')}.json")
         if not p: return
         with open(p, 'w', encoding='utf-8') as f:
-            json.dump({"name": name, "fields": [fld.to_dict() for fld in self.fields]},
+            json.dump({"name": name, "fields": {k: [fld.to_dict() for fld in v] for k, v in self.fields.items() if v}},
                       f, indent=2, ensure_ascii=False)
         self.template_path, self.template_name = p, name
-        messagebox.showinfo("Gespeichert", f"'{name}', {len(self.fields)} Felder"); self._status()
+        total = sum(len(v) for v in self.fields.values())
+        messagebox.showinfo("Gespeichert", f"'{name}', {total} Felder"); self._status()
 
     # ─── Projekt ──────────────────────────────────────────────
     def _load_project(self):
@@ -623,24 +687,38 @@ class App:
                 messagebox.showwarning("PDF fehlt", f"PDF nicht gefunden:\n{pdf}\nBitte manuell öffnen.")
             # Vorlage laden (Felddefinitionen)
             if "fields" in data:
-                self.fields.clear()
-                for item in data["fields"]:
-                    f = FieldRect.from_dict(item)
-                    # Werte aus Projekt übernehmen
-                    val = data.get("values", {}).get(f.label, "")
-                    if val:
-                        f.value = val
-                    self.fields.append(f)
+                raw = data["fields"]
+                if isinstance(raw, dict):
+                    # Neue Struktur: fields pro Seite
+                    self.fields = {}
+                    for page_key, flist in raw.items():
+                        self.fields[page_key] = []
+                        for item in flist:
+                            f = FieldRect.from_dict(item)
+                            val = data.get("values", {}).get(f"{page_key}:{f.label}", "")
+                            if val:
+                                f.value = val
+                            self.fields[page_key].append(f)
+                else:
+                    # Alte Struktur: flache Liste → aktuelle Seite
+                    self.fields = {str(self.current_page): []}
+                    for item in raw:
+                        f = FieldRect.from_dict(item)
+                        val = data.get("values", {}).get(f.label, "")
+                        if val:
+                            f.value = val
+                        self.fields[str(self.current_page)].append(f)
             self.selected = None
             self.project_path, self.project_name = p, data.get("name", os.path.basename(p))
             self._render(); self._status()
-            n_val = sum(1 for f in self.fields if f.value)
-            messagebox.showinfo("Geladen", f"Projekt '{self.project_name}', {len(self.fields)} Felder ({n_val} ausgefüllt)")
+            total = sum(len(v) for v in self.fields.values())
+            n_val = sum(1 for v in self.fields.values() for f in v if f.value)
+            messagebox.showinfo("Geladen", f"Projekt '{self.project_name}', {total} Felder ({n_val} ausgefüllt)")
         except Exception as e: messagebox.showerror("Fehler", f"Projekt: {e}")
 
     def _save_project(self):
         """Speichert Felder + Werte als Projekt-JSON."""
-        if not self.fields:
+        if not any(self.fields.values()):
             return messagebox.showwarning("Leer", "Keine Felder im Projekt.")
         name = simpledialog.askstring("Name", "Projektname:", initialvalue=self.project_name or "Ohne Namen")
         if not name: return
@@ -650,13 +728,18 @@ class App:
         data = {
             "name": name,
             "pdf": self.pdf_path or "",
-            "fields": [fld.to_dict() for fld in self.fields],
-            "values": {fld.label: fld.value for fld in self.fields if fld.value},
+            "fields": {k: [fld.to_dict() for fld in v] for k, v in self.fields.items() if v},
+            "values": {},
         }
+        for page_key, flist in self.fields.items():
+            for f in flist:
+                if f.value:
+                    data["values"][f"{page_key}:{f.label}"] = f.value
         with open(p, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
         self.project_path, self.project_name = p, name
-        n_val = sum(1 for f in self.fields if f.value)
+        total = sum(len(v) for v in self.fields.values())
+        n_val = sum(1 for v in self.fields.values() for f in v if f.value)
         messagebox.showinfo("Gespeichert", f"Projekt '{name}', {n_val} Feld(er) ausgefüllt"); self._status()
 
     # ─── Popup-Menüs ──────────────────────────────────────────
@@ -751,7 +834,7 @@ class App:
                         self.cv.create_line(self.ox, self.oy + px, self.ox + 4, self.oy + px,
                                            fill=C["status"], width=1, tags="ruler")
 
-            for f in self.fields: self._draw(f)
+            for f in self._current_fields(): self._draw(f)
 
             self.cv.create_text(cw-10,10, anchor=tk.NE, text=f"{self.zoom*100:.0f}%",
                                fill="white", font=("Arial",10))
@@ -816,7 +899,7 @@ class App:
     def _ic(self, e): return (e.x - self.ox)/self.zoom, (e.y - self.oy)/self.zoom
 
     def _find(self, px, py):
-        for f in reversed(self.fields):
+        for f in reversed(self._current_fields()):
             if f.contains(px, py): return f
         return None
 
@@ -831,9 +914,10 @@ class App:
             self.active_field.value = v[:-1] if isinstance(v,str) else ""
             self._render(); return
         if e.keysym == "Tab":
-            idx = self.fields.index(self.active_field); self.active_field = None
-            for i in range(1,len(self.fields)):
-                nf = self.fields[(idx+i)%len(self.fields)]
+            cur = self._current_fields()
+            idx = cur.index(self.active_field); self.active_field = None
+            for i in range(1, len(cur)):
+                nf = cur[(idx + i) % len(cur)]
                 if nf.type == "text": self.active_field = nf; break
             if self.active_field: self._render(); self.cv.focus_set()
             return
@@ -866,7 +950,7 @@ class App:
                     self._render()
                     self._status()
                 elif f.type == "radio":
-                    for o in self.fields:
+                    for o in self._current_fields():
                         if o.type == "radio" and o.group == f.group:
                             o.value = False
                     f.value = True
@@ -970,7 +1054,7 @@ class App:
             result = self._field_dialog(f)
             if result:
                 f.label, f.type, f.group = result
-                self.fields.append(f)
+                self._current_fields().append(f)
                 self.selected = f
                 self._render()
                 self._status()
@@ -1032,7 +1116,7 @@ class App:
         f = self._find(px, py)
         if self.mode == "edit" and f:
             if messagebox.askyesno("Löschen", f"'{f.label}' löschen?"):
-                self.fields.remove(f)
+                self._current_fields().remove(f)
                 if self.selected == f:
                     self.selected = None
                 self._render()
@@ -1077,7 +1161,7 @@ class App:
         
         tk.Label(win, text="Feldname:", bg=C["bg"], fg=C["text"],
                  font=("Segoe UI",10)).pack(pady=(12,2))
-        name_var = tk.StringVar(value=f.label or f"Feld {len(self.fields)+1}")
+        name_var = tk.StringVar(value=f.label or f"Feld {len(self._current_fields())+1}")
         name_et = tk.Entry(win, textvariable=name_var, bg=C["canvas"], fg=C["text"],
                            font=("Segoe UI",11), insertbackground=C["text"],
                            relief=tk.FLAT, bd=4)
@@ -1152,7 +1236,7 @@ class App:
         img = self.pdf_image.copy()
         d = ImageDraw.Draw(img)
 
-        for f in self.fields:
+        for f in self._current_fields():
             if f.type == "text" and f.value:
                 # Schrift in Punkt — aus Einstellung
                 pt = max(6, min(36, self.font_size))
@@ -1196,7 +1280,7 @@ class App:
 
     def _reset(self):
         self._stop_typing()
-        for f in self.fields: f.value = ""
+        for f in self._current_fields(): f.value = ""
         self._render(); self._status()
 
     def _mw(self, e): self._do_zoom(1.1 if e.delta > 0 else 0.9)
@@ -1204,13 +1288,21 @@ class App:
     def _status(self):
         pdf = os.path.basename(self.pdf_path) if self.pdf_path else "Kein PDF"
         mt = "EDITOR" if self.mode=="edit" else "AUSFUELLEN"
-        fc = len(self.fields)
+        cur = self._current_fields()
+        fc = len(cur)
         sel = f" | {self.selected.label}" if self.selected else ""
         tpl = f" | Vorlage:{self.template_name}" if self.template_name else ""
         proj = f" | Projekt:{self.project_name}" if self.project_name else ""
         akt = f" | {self.active_field.label}" if self.active_field else ""
         fr = " | Rahmen AUS" if not self.show_frames else ""
-        self.sb.config(text=f"{mt} | {pdf}{tpl}{proj} | {fc} Feld(er){sel}{akt}{fr} | Raster {self.grid_size}px")
+        pages = f" | Seite {self.current_page+1}/{self.page_count}" if self.page_count > 1 else ""
+        self.sb.config(text=f"{mt} | {pdf}{tpl}{proj} | {fc} Feld(er){sel}{akt}{fr}{pages} | Raster {self.grid_size}px")
+        # Seiten-Label aktualisieren
+        if hasattr(self, 'page_label'):
+            if self.page_count > 1:
+                self.page_label.config(text=f"Seite {self.current_page+1}/{self.page_count}")
+            else:
+                self.page_label.config(text="")
 
 
 def main():
