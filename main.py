@@ -161,6 +161,8 @@ class App:
         self.ruler_step = 50  # Pixelabstand Lineal-Striche
         self.grid_size = 15  # Einrast-Raster, jetzt einstellbar
         self.selected_tool = None  # Werkzeug aus Toolbox
+        self._stempel_images = {}  # PIL-Images für PDF-Export
+        self._stempel_tk = {}  # tkinter-PhotoImages für Canvas
 
         self._build()
         self._set_mode("fill")
@@ -538,6 +540,8 @@ class App:
         self.pdf_image = self.pdf_tk = None
         self.fields = {}
         self.stamps = {}
+        self._stempel_images = {}
+        self._stempel_tk = {}
         self.current_page = 0
         self.page_count = 0
         self.selected = None
@@ -1428,17 +1432,18 @@ class App:
 
         # Stempel auf PDF malen
         for s in self._current_stamps():
-            # Stempel-Rahmen
-            d.rectangle([s.x, s.y, s.x + s.w, s.y + s.h], outline=s.color, width=3)
-            d.rectangle([s.x + 3, s.y + 3, s.x + s.w - 3, s.y + s.h - 3], outline=s.color, width=1)
-            # Stempel-Text (PIL unterstützt Rotation)
             try:
-                font = get_font(16, "Liberation Sans")
-                from PIL import ImageFont
-                stempel_font = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", 18)
-                d.text((s.x + s.w//2 - 40, s.y + s.h//2 - 10), s.text, fill=s.color, font=stempel_font)
-            except:
-                pass  # Fallback: kein Text
+                stempel_img = self._stempel_bild(s, scale=300/72 / SCALE)
+                # Position in Pixeln (SCALE = 300/72)
+                x = int(s.x * SCALE)
+                y = int(s.y * SCALE)
+                if stempel_img.mode == 'RGBA':
+                    # Alpha-Kanal als Maske nutzen
+                    img.paste(stempel_img, (x, y), stempel_img)
+                else:
+                    img.paste(stempel_img, (x, y))
+            except Exception as e:
+                print(f"Stempel-PDF-Fehler: {e}")
 
         tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
         img.save(tmp.name, "PDF", resolution=300)
@@ -1474,32 +1479,56 @@ class App:
         """Gibt die Stempel-Liste der aktuellen Seite zurück."""
         return self.stamps.get(str(self.current_page), [])
 
-    def _draw_stempel(self, s):
-        """Zeichnet einen Stempel auf dem Canvas."""
-        z = self.zoom
-        x, y = self.ox + int(s.x * z), self.oy + int(s.y * z)
-        w, h = int(s.w * z), int(s.h * z)
+    def _stempel_bild(self, s, scale=1.0):
+        """Erzeugt ein PIL-Image des Stempels (mit Rahmen + Rotation)."""
+        pt = max(12, int(16 * scale))
+        try:
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", pt)
+        except:
+            font = ImageFont.load_default()
 
-        # Stempel-Hintergrund (rundes Rechteck) — nur zeichnen wenn sichtbar
-        if w < 5 or h < 5:
-            return
+        # Text-Größe ermitteln
+        bbox = font.getbbox(s.text)
+        tw = bbox[2] - bbox[0]
+        th = bbox[3] - bbox[1]
+        pad = int(12 * scale)
+        w = tw + pad * 2
+        h = th + pad * 2
+        s.w, s.h = int(w / scale), int(h / scale)  # Originalgröße für Koordinaten
+
+        img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        d = ImageDraw.Draw(img)
 
         # Doppelter Rahmen
-        self.cv.create_rectangle(x, y, x + w, y + h,
-                                outline=s.color, fill="", width=max(2, int(3*z)),
-                                tags="f")
-        self.cv.create_rectangle(x + 3, y + 3, x + w - 3, y + h - 3,
-                                outline=s.color, fill="", width=max(1, int(1*z)),
-                                tags="f")
-        # Text
-        fs = max(10, int(14 * z))
-        self.cv.create_text(x + w//2, y + h//2, text=s.text,
-                           fill=s.color, font=("Courier", fs, "bold"),
-                           angle=s.rotation,
-                           tags="f")
-        # Unterstrich
-        self.cv.create_line(x + 10, y + h - 8, x + w - 10, y + h - 8,
-                           fill=s.color, width=max(1, int(2*z)), tags="f")
+        for off, width in [(0, 3), (3, 1)]:
+            d.rectangle([off, off, w - off - 1, h - off - 1],
+                       outline=s.color, width=max(1, int(width * scale)))
+
+        # Text zentriert
+        tx = (w - tw) // 2
+        ty = (h - th) // 2 - bbox[1]
+        d.text((tx, ty), s.text, fill=s.color, font=font)
+
+        # Linie unter dem Text
+        ly = ty + th + int(4 * scale)
+        d.line([pad, ly, w - pad, ly], fill=s.color, width=max(1, int(2 * scale)))
+
+        # Rotation
+        if s.rotation:
+            img = img.rotate(s.rotation, expand=True, fillcolor=(0, 0, 0, 0))
+
+        return img
+
+    def _draw_stempel(self, s):
+        """Zeichnet einen Stempel als gerendertes PIL-Image auf dem Canvas."""
+        z = self.zoom
+        img = self._stempel_bild(s, scale=z)
+        self._stempel_images[s] = img  # für später (PDF-Export)
+        iw, ih = img.size
+        x = self.ox + int(s.x * z)
+        y = self.oy + int(s.y * z)
+        self._stempel_tk[s] = ImageTk.PhotoImage(img)
+        self.cv.create_image(x, y, anchor=tk.NW, image=self._stempel_tk[s], tags="f")
 
     def _stempel_dialog(self, x, y):
         """Zeigt Stempel-Auswahl und platziert einen Stempel auf der aktuellen Seite."""
