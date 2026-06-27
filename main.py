@@ -19,6 +19,38 @@ C = {
 }
 SCALE = 300 / 72
 
+FONT_CHOICES = [
+    ("Liberation Sans", "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"),
+    ("Liberation Sans Bold", "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"),
+    ("Liberation Serif", "/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf"),
+    ("Liberation Mono", "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf"),
+    ("DejaVu Sans", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
+    ("Arial", "arial.ttf"),
+]
+
+def get_font_path(name):
+    for n, p in FONT_CHOICES:
+        if n == name and os.path.exists(p):
+            return p
+    # Fallback: Direkt-Pfad
+    for n, p in FONT_CHOICES:
+        if os.path.exists(p):
+            return p
+    return None
+
+def get_font(size_pt, name=None):
+    px = max(6, int(size_pt * SCALE))
+    if name:
+        for n, p in FONT_CHOICES:
+            if n == name and os.path.exists(p):
+                try: return ImageFont.truetype(p, px)
+                except: pass
+    # Fallback-Kette
+    for _, p in FONT_CHOICES:
+        if os.path.exists(p):
+            try: return ImageFont.truetype(p, px)
+            except: pass
+    return ImageFont.load_default()
 
 def detect_font_size(pdf_path):
     try:
@@ -31,16 +63,6 @@ def detect_font_size(pdf_path):
             if not sizes: return 11
             return Counter(sizes).most_common(1)[0][0]
     except: return 11
-
-
-def get_font(size_pt):
-    px = max(6, int(size_pt * SCALE))
-    for p in [f"/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-              f"/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
-              "arial.ttf", "DejaVuSans.ttf"]:
-        try: return ImageFont.truetype(p, px)
-        except: pass
-    return ImageFont.load_default()
 
 
 class FieldRect:
@@ -89,6 +111,8 @@ class App:
         self.line_height = int(self.font_size * SCALE)
         self.frame_height = 80  # Rahmenhöhe in Pixeln, Voreinstellung 80
         self.export_font = get_font(self.font_size)
+        self.font_color = "#000000"  # Schwarz, als String
+        self.font_name = "Liberation Sans"
 
         self.dragging = False
         self.dx = self.dy = 0
@@ -163,6 +187,7 @@ class App:
         self.btn_ruler = self._btn(tb, "Lineal", self._toggle_ruler, C["yellow"])
         self._btn(tb, "Höhe", self._set_height_dialog, C["yellow"])
         self._btn(tb, "Raster", self._set_grid_dialog, C["yellow"])
+        self._btn(tb, "Schrift", self._font_dialog, C["cyan"])
         tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=3, fill=tk.Y, pady=3)
 
         # --- Drucken / Zoom ---
@@ -230,6 +255,86 @@ class App:
             self.grid_size = val
             self._status()
 
+    def _font_dialog(self):
+        """Dialog für Schriftart, -größe und -farbe der Textfelder."""
+        win = tk.Toplevel(self.root)
+        win.title("Schrift-Einstellungen")
+        win.configure(bg=C["bg"])
+        win.transient(self.root)
+        win.grab_set()
+        win.resizable(False, False)
+
+        rx, ry = self.root.winfo_x(), self.root.winfo_y()
+        rw, rh = self.root.winfo_width(), self.root.winfo_height()
+        ww, wh = 340, 280
+        win.geometry(f"{ww}x{wh}+{rx+rw//2-ww//2}+{ry+rh//2-wh//2}")
+
+        # Schriftart
+        tk.Label(win, text="Schriftart:", bg=C["bg"], fg=C["text"],
+                font=("Segoe UI",10)).pack(pady=(12,2))
+        font_var = tk.StringVar(value=self.font_name)
+        font_cb = ttk.Combobox(win, textvariable=font_var,
+                               values=[n for n, _ in FONT_CHOICES],
+                               state="readonly", font=("Segoe UI",11))
+        font_cb.pack(padx=20, fill=tk.X)
+
+        # Schriftgröße
+        tk.Label(win, text="Schriftgröße (Punkt):", bg=C["bg"], fg=C["text"],
+                font=("Segoe UI",10)).pack(pady=(8,2))
+        size_frame = tk.Frame(win, bg=C["bg"])
+        size_frame.pack(padx=20, fill=tk.X)
+        size_var = tk.IntVar(value=self.font_size)
+        tk.Scale(size_frame, from_=6, to=36, orient=tk.HORIZONTAL,
+                variable=size_var, bg=C["bg"], fg=C["text"],
+                troughcolor=C["canvas"], highlightthickness=0,
+                length=200, bd=0).pack(side=tk.LEFT)
+        size_lbl = tk.Label(size_frame, textvariable=size_var, bg=C["bg"],
+                           fg=C["accent"], font=("Segoe UI",12,"bold"), width=3)
+        size_lbl.pack(side=tk.LEFT, padx=6)
+
+        # Schriftfarbe
+        tk.Label(win, text="Schriftfarbe:", bg=C["bg"], fg=C["text"],
+                font=("Segoe UI",10)).pack(pady=(8,2))
+        color_frame = tk.Frame(win, bg=C["bg"])
+        color_frame.pack(padx=20, fill=tk.X)
+        color_var = tk.StringVar(value=self.font_color)
+        colors = ["#000000", "#333333", "#666666", "#990000", "#cc0000",
+                  "#006600", "#000099", "#663300", "#800080", "#cc6600"]
+        for c in colors:
+            btn = tk.Button(color_frame, bg=c, width=2, bd=1, relief=tk.RAISED,
+                          command=lambda cv=c: color_var.set(cv),
+                          activebackground=c)
+            btn.pack(side=tk.LEFT, padx=2, pady=2)
+        color_et = tk.Entry(color_frame, textvariable=color_var, bg=C["canvas"],
+                           fg=C["text"], font=("Segoe UI",10,"bold"),
+                           relief=tk.FLAT, bd=2, width=10)
+        color_et.pack(side=tk.RIGHT, padx=(0,0))
+
+        def on_ok():
+            self.font_name = font_var.get()
+            self.font_size = size_var.get()
+            self.font_color = color_var.get()
+            self.line_height = max(10, int(self.font_size * SCALE))
+            self.export_font = get_font(self.font_size, self.font_name)
+            self._render()
+            self._status()
+            win.destroy()
+
+        def on_cancel():
+            win.destroy()
+
+        btn_frame = tk.Frame(win, bg=C["bg"])
+        btn_frame.pack(pady=(12,10))
+        tk.Button(btn_frame, text="OK", command=on_ok,
+                 bg=C["green"], fg="#11111b", font=("Segoe UI",10,"bold"),
+                 bd=0, padx=20, pady=4, cursor="hand2").pack(side=tk.LEFT, padx=6)
+        tk.Button(btn_frame, text="Abbrechen", command=on_cancel,
+                 bg=C["red"], fg="#11111b", font=("Segoe UI",10,"bold"),
+                 bd=0, padx=14, pady=4, cursor="hand2").pack(side=tk.LEFT, padx=6)
+
+        win.bind("<Return>", lambda e: on_ok())
+        win.bind("<Escape>", lambda e: on_cancel())
+
     def _toggle_frames(self):
         self.show_frames = not self.show_frames
         self.btn_frame.configure(bg=C["green"] if self.show_frames else C["status"])
@@ -266,7 +371,7 @@ class App:
         self.pdf_path = path
         self.font_size = detect_font_size(path)
         self.line_height = max(10, int(self.font_size * SCALE))
-        self.export_font = get_font(self.font_size)
+        self.export_font = get_font(self.font_size, self.font_name)
         try:
             pdf = pdfium.PdfDocument(path)
             bm = pdf[0].render(scale=300/72)
@@ -473,16 +578,18 @@ class App:
                                fill="#89b4fa" if self.mode=="edit" else "#64ff64",
                                font=("Segoe UI",fs), tags="f")
 
-        # Wert anzeigen — Schrift an Feldhöhe anpassen
+        # Wert anzeigen — Schrift aus Einstellung
         if f.value and f.type == "text":
-            # Gleiche Punktgröße wie im PDF-Export
-            pt = max(6, min(36, f.h / SCALE * 0.7))
+            # Selbst auf dem Canvas die eingestellte Schriftgröße nutzen
+            pt = max(6, min(36, self.font_size))
             fs = max(8, int(pt * SCALE * z * 0.8))
             txt = str(f.value)
+            fc = self.font_color if self.font_color else "#000000"
             # Vertikal zentriert — einen Tick weiter unten
             y_center = y1 + fs // 2 + 5
-            self.cv.create_text(x1+3, y_center, anchor=tk.W, text=txt, fill="#000",
-                               font=("Segoe UI",fs), tags="f")
+            fn = "Segoe UI" if self.font_name == "Liberation Sans" else "Segoe UI"
+            self.cv.create_text(x1+3, y_center, anchor=tk.W, text=txt, fill=fc,
+                               font=(fn,fs), tags="f")
 
         # Checkbox/Radio
         if f.type == "checkbox" and f.value in (True,"True","true","1"):
@@ -837,9 +944,10 @@ class App:
 
         for f in self.fields:
             if f.type == "text" and f.value:
-                # Schrift in Punkt — direkt proportional zur Feldhöhe
-                pt = max(6, min(36, f.h / SCALE * 0.7))
-                font = get_font(pt)
+                # Schrift in Punkt — aus Einstellung, aber auf Feldhöhe begrenzt
+                pt = max(6, min(36, self.font_size))
+                font = get_font(pt, self.font_name)
+                fill_color = self.font_color if self.font_color else "#000000"
                 # PIL-Offset für korrekte y-Position
                 ref_bbox = font.getbbox('Ag')
                 # bbox[1] ist negativ: Abstand von draw_y bis Oberkante der Glyphen
@@ -847,7 +955,7 @@ class App:
                 # Text zentriert innerhalb des Feldes — minimalen Offset nach unten
                 text_h = ref_bbox[3] - ref_bbox[1]  # effektive Höhe des Textes
                 draw_y = f.y1 + (f.h - text_h) // 2 - 1 - pil_offset
-                d.text((f.x1 + 2, draw_y), str(f.value), fill=(0, 0, 0), font=font)
+                d.text((f.x1 + 2, draw_y), str(f.value), fill=fill_color, font=font)
             elif f.type == "checkbox" and f.value in (True,"True","true","1"):
                 for i in range(2):
                     d.line([(f.x1+2,f.y1+8+i),(f.x1+6,f.y1+12+i),(f.x1+13,f.y1+3+i)], fill=(0,0,0), width=2)
