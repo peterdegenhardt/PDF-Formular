@@ -287,6 +287,9 @@ class App:
         self.sb = tk.Label(self.root, text="", bg=C["status"], fg=C["text"],
                           anchor=tk.W, font=("Segoe UI",9))
         self.sb.pack(side=tk.BOTTOM, fill=tk.X)
+        self.sb_mouse = tk.Label(self.root, text="", bg=C["status"], fg=C["dim"],
+                                anchor=tk.E, font=("Segoe UI",8))
+        self.sb_mouse.pack(side=tk.BOTTOM, fill=tk.X)
 
         self.cv.bind("<Configure>", lambda e: self._render())
         self.cv.bind("<MouseWheel>", self._mw)
@@ -531,6 +534,8 @@ class App:
             self.mf.configure(bg=C["canvas"])
             self.cv.configure(bg=C["canvas"])
             self.sb.configure(bg=C["status"], fg=C["text"])
+            if hasattr(self, 'sb_mouse'):
+                self.sb_mouse.configure(bg=C["status"], fg=C["dim"])
             self._tb.configure(bg=C["bg"])
             # Page-Label einfärben
             if hasattr(self, 'page_label'):
@@ -1336,6 +1341,13 @@ class App:
 
     def _mw(self, e): self._do_zoom(1.1 if e.delta > 0 else 0.9)
 
+    def _mouse_help(self):
+        """Gibt kontextabhängige Maus-Hilfe für die untere Statusleiste."""
+        if self.mode == "fill":
+            return "🖱️ Links=Text eingeben/Check setzen | Mitte=nix | Rechts=Pan | Rad=Zoom"
+        else:  # edit
+            return "🖱️ Links=Feld anlegen | Strg+Links=Feld verschieben | Mitte=Feld verschieben | Rechts=Pan | Rad=Zoom | Rechts+Feld=Löschen"
+
     def _status(self):
         pdf = os.path.basename(self.pdf_path) if self.pdf_path else "Kein PDF"
         mt = "EDITOR" if self.mode=="edit" else "AUSFUELLEN"
@@ -1348,6 +1360,9 @@ class App:
         fr = " | Rahmen AUS" if not self.show_frames else ""
         pages = f" | Seite {self.current_page+1}/{self.page_count}" if self.page_count > 1 else ""
         self.sb.config(text=f"{mt} | {pdf}{tpl}{proj} | {fc} Feld(er){sel}{akt}{fr}{pages} | Raster {self.grid_size}px")
+        # Maus-Hilfe aktualisieren
+        if hasattr(self, 'sb_mouse'):
+            self.sb_mouse.config(text=self._mouse_help())
         # Seiten-Label aktualisieren
         if hasattr(self, 'page_label'):
             if self.page_count > 1:
