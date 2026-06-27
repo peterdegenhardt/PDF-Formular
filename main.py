@@ -189,7 +189,7 @@ class App:
         self.btn_open.pack(side=tk.LEFT, padx=1)
 
         # --- 💾 SPEICHERN (Dropdown) ---
-        self.btn_save = tk.Button(tb, text="💾 SPEICHERN", font=("Segoe UI",9,"bold"),
+        self.btn_save = tk.Button(self._tb, text="💾 SPEICHERN", font=("Segoe UI",9,"bold"),
                                  bg=C["green"], fg="#11111b", activebackground=C["green"],
                                  activeforeground="#11111b", relief=tk.RAISED, bd=2,
                                  pady=4, padx=10, cursor="hand2",
