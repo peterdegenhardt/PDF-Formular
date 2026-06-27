@@ -136,25 +136,26 @@ class App:
         tb = tk.Frame(self.root, bg=C["bg"], height=38)
         tb.pack(fill=tk.X, padx=3, pady=(3,0))
 
-        # --- 📂 ÖFFNEN-Bereich ---
-        tk.Label(tb, text="📂 ÖFFNEN", bg=C["bg"], fg=C["dim"],
-                font=("Segoe UI",8,"bold")).pack(side=tk.LEFT, padx=(4,2))
-        self._btn(tb, "PDF", self._open_pdf, C["accent"])
-        self._btn(tb, "Vorlage", self._load_template, C["cyan"])
-        self._btn(tb, "Projekt", self._load_project, "#cba6f7")
-        tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=3, fill=tk.Y, pady=3)
+        # --- 📂 ÖFFNEN (Dropdown) ---
+        self.btn_open = tk.Button(tb, text="📂 ÖFFNEN", font=("Segoe UI",9,"bold"),
+                                 bg=C["accent"], fg="#11111b", activebackground=C["accent"],
+                                 activeforeground="#11111b", relief=tk.RAISED, bd=2,
+                                 pady=4, padx=10, cursor="hand2",
+                                 command=self._show_open_menu)
+        self.btn_open.pack(side=tk.LEFT, padx=1)
 
         # --- Modus ---
         self.btn_fill = self._btn(tb, "Ausfüllen", lambda: self._set_mode("fill"), C["green"])
         self.btn_edit = self._btn(tb, "Editor", lambda: self._set_mode("edit"), C["status"])
         tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=3, fill=tk.Y, pady=3)
 
-        # --- 💾 SPEICHERN-Bereich ---
-        tk.Label(tb, text="💾 SPEICHERN", bg=C["bg"], fg=C["dim"],
-                font=("Segoe UI",8,"bold")).pack(side=tk.LEFT, padx=(4,2))
-        self._btn(tb, "PDF", self._save_pdf, C["green"])
-        self._btn(tb, "Vorlage", self._save_template, C["cyan"])
-        self._btn(tb, "Projekt", self._save_project, "#cba6f7")
+        # --- 💾 SPEICHERN (Dropdown) ---
+        self.btn_save = tk.Button(tb, text="💾 SPEICHERN", font=("Segoe UI",9,"bold"),
+                                 bg=C["green"], fg="#11111b", activebackground=C["green"],
+                                 activeforeground="#11111b", relief=tk.RAISED, bd=2,
+                                 pady=4, padx=10, cursor="hand2",
+                                 command=self._show_save_menu)
+        self.btn_save.pack(side=tk.LEFT, padx=1)
         tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=3, fill=tk.Y, pady=3)
 
         # --- Rahmen/Höhe/Raster/Lineal ---
@@ -348,6 +349,31 @@ class App:
         self.project_path, self.project_name = p, name
         n_val = sum(1 for f in self.fields if f.value)
         messagebox.showinfo("Gespeichert", f"Projekt '{name}', {n_val} Feld(er) ausgefüllt"); self._status()
+
+    # ─── Popup-Menüs ──────────────────────────────────────────
+    def _show_open_menu(self):
+        """Dropdown-Menü mit den 3 Öffnen-Optionen."""
+        menu = tk.Menu(self.root, tearoff=0, bg=C["bg"], fg=C["text"],
+                       activebackground=C["accent"], activeforeground="#11111b",
+                       font=("Segoe UI",10))
+        menu.add_command(label="📄 PDF öffnen", command=self._open_pdf)
+        menu.add_command(label="📋 Vorlage öffnen", command=self._load_template)
+        menu.add_command(label="🗂️ Projekt öffnen", command=self._load_project)
+        x = self.btn_open.winfo_rootx()
+        y = self.btn_open.winfo_rooty() + self.btn_open.winfo_height()
+        menu.post(x, y)
+
+    def _show_save_menu(self):
+        """Dropdown-Menü mit den 3 Speichern-Optionen."""
+        menu = tk.Menu(self.root, tearoff=0, bg=C["bg"], fg=C["text"],
+                       activebackground=C["green"], activeforeground="#11111b",
+                       font=("Segoe UI",10))
+        menu.add_command(label="📄 PDF speichern", command=self._save_pdf)
+        menu.add_command(label="📋 Vorlage speichern", command=self._save_template)
+        menu.add_command(label="🗂️ Projekt speichern", command=self._save_project)
+        x = self.btn_save.winfo_rootx()
+        y = self.btn_save.winfo_rooty() + self.btn_save.winfo_height()
+        menu.post(x, y)
 
     # ─── Zoom ─────────────────────────────────────────────────
     def _fit_zoom(self):
