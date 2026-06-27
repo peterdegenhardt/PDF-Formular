@@ -370,47 +370,53 @@ class App:
 
         rx, ry = self.root.winfo_x(), self.root.winfo_y()
         rw, rh = self.root.winfo_width(), self.root.winfo_height()
-        ww, wh = 380, 360
+        ww, wh = 380, 380
         win.geometry(f"{ww}x{wh}+{rx+rw//2-ww//2}+{ry+rh//2-wh//2}")
 
-        # Hell/Dunkel-Buttons
+        # --- Hell/Dunkel-Voreinstellungen ---
         theme_frame = tk.Frame(win, bg=C["bg"])
-        theme_frame.pack(pady=(10,4))
-        tk.Label(theme_frame, text="Voreinstellung:", bg=C["bg"], fg=C["text"],
-                font=("Segoe UI",10)).pack(side=tk.LEFT, padx=(0,8))
+        theme_frame.pack(pady=(12,4), fill=tk.X)
 
-        def apply_schema(s):
-            for key, val in s.items():
-                vars_[key].set(val)
-                previews[key].configure(bg=val)
+        def set_hell():
+            for k, v in SCHEMA_HELL.items():
+                vars_[k].set(v)
+                previews[k].configure(bg=v)
+
+        def set_dunkel():
+            for k, v in SCHEMA_DUNKEL.items():
+                vars_[k].set(v)
+                previews[k].configure(bg=v)
 
         tk.Button(theme_frame, text="🌙 Dunkel", font=("Segoe UI",9,"bold"),
                  bg=SCHEMA_DUNKEL["bg"], fg=SCHEMA_DUNKEL["accent"],
-                 bd=1, padx=10, pady=2, cursor="hand2",
-                 command=lambda: apply_schema(SCHEMA_DUNKEL)).pack(side=tk.LEFT, padx=3)
+                 bd=1, padx=12, pady=2, cursor="hand2",
+                 command=set_dunkel).pack(side=tk.LEFT, padx=3)
         tk.Button(theme_frame, text="☀️ Hell", font=("Segoe UI",9,"bold"),
                  bg=SCHEMA_HELL["bg"], fg=SCHEMA_HELL["accent"],
-                 bd=1, padx=10, pady=2, cursor="hand2",
-                 command=lambda: apply_schema(SCHEMA_HELL)).pack(side=tk.LEFT, padx=3)
+                 bd=1, padx=12, pady=2, cursor="hand2",
+                 command=set_hell).pack(side=tk.LEFT, padx=3)
 
-        # Farbfelder
-        vars_, previews = {}, {}
+        # --- Farbfelder ---
+        vars_ = {}
+        previews = {}
         felder = [
             ("Hintergrund", "bg"),
             ("Canvas", "canvas"),
             ("Akzent", "accent"),
             ("Statusleiste", "status"),
         ]
-        row = 1
+        inp_frame = tk.Frame(win, bg=C["bg"])
+        inp_frame.pack(pady=(8,4))
+        row = 0
         for label, key in felder:
-            tk.Label(win, text=label, bg=C["bg"], fg=C["text"],
-                    font=("Segoe UI",10)).grid(row=row, column=0, padx=10, pady=5, sticky=tk.W)
+            tk.Label(inp_frame, text=label, bg=C["bg"], fg=C["text"],
+                    font=("Segoe UI",10), width=14, anchor=tk.W).grid(row=row, column=0, padx=6, pady=4)
             vars_[key] = tk.StringVar(value=C[key])
-            et = tk.Entry(win, textvariable=vars_[key], bg=C["canvas"], fg=C["text"],
+            et = tk.Entry(inp_frame, textvariable=vars_[key], bg=C["canvas"], fg=C["text"],
                          font=("Segoe UI",10,"bold"), relief=tk.FLAT, bd=2, width=14)
-            et.grid(row=row, column=1, padx=4, pady=5)
-            previews[key] = tk.Label(win, bg=C[key], width=4, relief=tk.RAISED, bd=2)
-            previews[key].grid(row=row, column=2, padx=4, pady=5)
+            et.grid(row=row, column=1, padx=4, pady=4)
+            previews[key] = tk.Label(inp_frame, bg=C[key], width=4, height=1, relief=tk.RAISED, bd=2)
+            previews[key].grid(row=row, column=2, padx=4, pady=4)
             row += 1
 
         def apply_ui():
@@ -428,15 +434,15 @@ class App:
             win.destroy()
 
         def on_reset():
-            # Auf SCHEMA_DUNKEL zurücksetzen (das ist das Standard-Look)
-            apply_schema(SCHEMA_DUNKEL)
+            set_dunkel()
             apply_ui()
+            win.destroy()
 
         def on_cancel():
             win.destroy()
 
         btn_frame = tk.Frame(win, bg=C["bg"])
-        btn_frame.grid(row=row, column=0, columnspan=3, pady=(14,10))
+        btn_frame.pack(pady=(12,10))
         tk.Button(btn_frame, text="OK", command=on_ok,
                  bg=C["green"], fg="#11111b", font=("Segoe UI",10,"bold"),
                  bd=0, padx=20, pady=4, cursor="hand2").pack(side=tk.LEFT, padx=6)
