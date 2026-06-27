@@ -1507,9 +1507,10 @@ class App:
         win.title("Stempel auswählen")
         win.configure(bg=C["bg"])
         win.transient(self.root)
-        win.grab_set()
         win.resizable(False, False)
         win.attributes("-topmost", True)
+        win.update_idletasks()  # Fenster sichtbar machen
+        win.grab_set()
 
         rx, ry = self.root.winfo_x(), self.root.winfo_y()
         rw, rh = self.root.winfo_width(), self.root.winfo_height()
@@ -1530,9 +1531,6 @@ class App:
             win.destroy()
             self._render()
             self._status()
-            # Debug: kurz prüfen
-            print(f"Stempel gesetzt: {text} auf Seite {self.current_page}, "
-                  f"jetzt {len(self.stamps.get(str(self.current_page),[]))} Stempel auf dieser Seite")
 
         for text, color, name in Stamp.STANDARD_STEMPEL:
             btn_frame = tk.Frame(frame, bg=color, bd=1, relief=tk.RAISED, cursor="hand2")
