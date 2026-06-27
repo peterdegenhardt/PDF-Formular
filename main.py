@@ -17,8 +17,8 @@ C = {
     "status": "#585b70", "text": "#cdd6f4", "dim": "#cdd6f4",
     "green": "#a6e3a1", "red": "#e64553", "yellow": "#f9e2af", "cyan": "#74c7ec",
 }
-SCHEMA_HELL = {"bg": "#f0f0f0", "accent": "#4a90d9", "canvas": "#ffffff", "status": "#d0d0d0"}
-SCHEMA_DUNKEL = {"bg": "#1e1e2e", "accent": "#89b4fa", "canvas": "#313244", "status": "#585b70"}
+SCHEMA_HELL = {"bg": "#f0f0f0", "accent": "#4a90d9", "canvas": "#ffffff", "status": "#d0d0d0", "text": "#1e1e2e", "dim": "#555555"}
+SCHEMA_DUNKEL = {"bg": "#1e1e2e", "accent": "#89b4fa", "canvas": "#313244", "status": "#585b70", "text": "#cdd6f4", "dim": "#cdd6f4"}
 SCALE = 300 / 72
 
 FONT_CHOICES = [
@@ -412,6 +412,8 @@ class App:
             ("Canvas", "canvas"),
             ("Akzent", "accent"),
             ("Statusleiste", "status"),
+            ("Textfarbe", "text"),
+            ("Text (dim)", "dim"),
         ]
         inp_frame = tk.Frame(win, bg=C["bg"])
         inp_frame.pack(pady=(8,4))
@@ -435,14 +437,14 @@ class App:
             self.cv.configure(bg=C["canvas"])
             self.sb.configure(bg=C["status"], fg=C["text"])
             self._tb.configure(bg=C["bg"])
-            # Toolbar-Buttons neu einfärben (die ohne eigenen bg-Attribut)
+            # Toolbar-Trennstriche und Buttons mit Text neu einfärben
             for w in self._tb_children:
-                if isinstance(w, tk.Button):
-                    # Nur Buttons ohne grün/rot/gelb/cyan — die sind Modus-Buttons
-                    pass
-                elif isinstance(w, tk.Frame):
+                if isinstance(w, tk.Frame):
                     w.configure(bg=C["status"])
-            # Menüleiste
+                elif isinstance(w, tk.Button):
+                    try: w.configure(fg=C["text"])
+                    except: pass
+            # Menüleiste komplett neu
             self.root.config(menu=None)
             self._build_menus()
             self._render()
