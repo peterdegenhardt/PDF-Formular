@@ -93,8 +93,9 @@ class App:
         self.root = root
         self.root.title(f"PDF-Formular Füller v{APP_VERSION}")
         try:
-            mx, my = self.root.winfo_pointerx(), self.root.winfo_pointery()
-            self.root.geometry(f"1200x850+{max(0,mx-600)}+{max(0,my-425)}")
+            sw, sh = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
+            x, y = max(0, (sw - 1200) // 2), max(0, (sh - 850) // 2)
+            self.root.geometry(f"1200x850+{x}+{y}")
         except: self.root.geometry("1200x850")
         self.root.minsize(900, 600)
 
