@@ -13,9 +13,9 @@ from collections import Counter
 APP_VERSION = "1.8.0"
 
 C = {
-    "bg": "#1e1e2e", "accent": "#89b4fa", "canvas": "#313244",
-    "status": "#585b70", "text": "#cdd6f4", "dim": "#cdd6f4",
-    "green": "#a6e3a1", "red": "#e64553", "yellow": "#f9e2af", "cyan": "#74c7ec",
+    "bg": "#f0f0f0", "accent": "#4a90d9", "canvas": "#ffffff",
+    "status": "#d0d0d0", "text": "#1e1e2e", "dim": "#555555",
+    "green": "#2ecc71", "red": "#e74c3c", "yellow": "#f1c40f", "cyan": "#00bcd4",
 }
 SCHEMA_HELL = {"bg": "#f0f0f0", "accent": "#4a90d9", "canvas": "#ffffff", "status": "#d0d0d0", "text": "#1e1e2e", "dim": "#555555"}
 SCHEMA_DUNKEL = {"bg": "#1e1e2e", "accent": "#89b4fa", "canvas": "#313244", "status": "#585b70", "text": "#cdd6f4", "dim": "#cdd6f4"}
@@ -212,9 +212,9 @@ class App:
 
         # --- Drucken / Zoom ---
         self._btn(self._tb, "Drucken", self._print_pdf, C["yellow"])
-        self._btn(self._tb, "−", lambda: self._do_zoom(0.8), C["status"], fg="#cdd6f4")
-        self._btn(self._tb, "+", lambda: self._do_zoom(1.25), C["status"], fg="#cdd6f4")
-        self._btn(self._tb, "1:1", self._zoom_reset, C["status"], fg="#cdd6f4")
+        self._btn(self._tb, "−", lambda: self._do_zoom(0.8), C["status"], fg="#11111b")
+        self._btn(self._tb, "+", lambda: self._do_zoom(1.25), C["status"], fg="#11111b")
+        self._btn(self._tb, "1:1", self._zoom_reset, C["status"], fg="#11111b")
         self._add_sep()
 
         # --- Reset ---
