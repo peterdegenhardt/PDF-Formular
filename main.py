@@ -584,8 +584,9 @@ class App:
             fs = max(8, int(pt * SCALE * z * 0.8))
             txt = str(f.value)
             fc = self.font_color if self.font_color else "#000000"
-            # Unten bündig, mit Abzug für Unterlängen (g,j,p,q,y) im Canvas
-            y_top = y2 - fs - 6
+            # SW-Anker = unten links, y = y2 setzt die Baseline auf Feld-Unterkante
+            # So ragen Unterlängen (g,j,p,q,y) nach unten raus wie bei PIL
+            y_base = y2 - 1
             # Schriftname für tkinter: Liberation Sans → Liberation Sans (tkinter kann das)
             # Fallback: wenn unbekannt, nimm "Liberation Sans"
             fn_map = {
@@ -596,7 +597,7 @@ class App:
                 "Arial": "Arial",
             }
             fn = fn_map.get(self.font_name, "Liberation Sans")
-            self.cv.create_text(x1+3, y_top, anchor=tk.NW, text=txt, fill=fc,
+            self.cv.create_text(x1+3, y_base, anchor=tk.SW, text=txt, fill=fc,
                                font=(fn,fs), tags="f")
 
         # Checkbox/Radio
