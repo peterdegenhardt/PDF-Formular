@@ -136,11 +136,37 @@ class App:
         self._build()
         self._set_mode("fill")
 
-    def _btn(self, p, t, c, bg, s=tk.LEFT, fg="#11111b", w=0):
+    def _btn(self, p, t, c, bg, s=tk.LEFT, fg="#11111b", w=0, tip=""):
         b = tk.Button(p, text=t, font=("Segoe UI",9,"bold"), bg=bg, fg=fg,
                      activebackground=C["accent"], activeforeground="#11111b",
                      relief=tk.RAISED, bd=2, pady=4, padx=6, width=w, cursor="hand2", command=c)
-        b.pack(side=s, padx=1); self._tb_children.append(b); return b
+        b.pack(side=s, padx=1); self._tb_children.append(b)
+        if tip:
+            self._attach_tooltip(b, tip)
+        return b
+
+    def _attach_tooltip(self, widget, text):
+        """Hängt einen Hover-Tooltip an ein Widget."""
+        tip_win = None
+        def enter(e):
+            nonlocal tip_win
+            if tip_win: return
+            x = widget.winfo_rootx() + 10
+            y = widget.winfo_rooty() + widget.winfo_height() + 4
+            tip_win = tk.Toplevel(widget)
+            tip_win.wm_overrideredirect(True)
+            tip_win.wm_geometry(f"+{x}+{y}")
+            tip_win.configure(bg=C["status"])
+            lbl = tk.Label(tip_win, text=text, bg=C["status"], fg=C["text"],
+                          font=("Segoe UI",8), padx=8, pady=3, justify=tk.LEFT)
+            lbl.pack()
+        def leave(e):
+            nonlocal tip_win
+            if tip_win:
+                tip_win.destroy()
+                tip_win = None
+        widget.bind("<Enter>", enter, add="+")
+        widget.bind("<Leave>", leave, add="+")
 
     def _add_sep(self):
         s = tk.Frame(self._tb, bg=C["status"], width=2)
@@ -228,6 +254,29 @@ class App:
         self.page_label.pack(side=tk.RIGHT, padx=6)
         self.btn_next = self._btn(self._tb, "➡", self._next_page, C["accent"], fg="#11111b")
         self.btn_prev = self._btn(self._tb, "⬅", self._prev_page, C["accent"], fg="#11111b")
+
+        # ─── Tooltips für alle Toolbar-Buttons ─────────────────
+        TOOLTIPS = {
+            "📂 ÖFFNEN": "PDF, Vorlage oder Projekt öffnen",
+            "💾 SPEICHERN": "PDF, Vorlage oder Projekt speichern",
+            "Ausfüllen": "Modus: Felder ausfüllen (Klick auf Textfeld)",
+            "Editor": "Modus: Felder anlegen, verschieben, löschen",
+            "Rahmen": "Feld-Rahmen ein-/ausblenden",
+            "Lineal": "Lineal ein-/ausblenden",
+            "Höhe": "Rahmenhöhe für neue Felder ändern",
+            "Raster": "Einrast-Raster-Größe ändern",
+            "Schrift": "Schriftart, -größe und -farbe einstellen",
+            "Drucken": "PDF in externem Betrachter öffnen (drucken)",
+            "−": "Verkleinern (Rauszoomen)",
+            "+": "Vergrößern (Reinzoomen)",
+            "1:1": "Zoom zurücksetzen (100 %)",
+            "Zurücksetzen": "Alle ausgefüllten Werte löschen",
+            "⬅": "Vorherige Seite",
+            "➡": "Nächste Seite",
+        }
+        for child in self._tb_children:
+            if isinstance(child, tk.Button) and child.cget("text") in TOOLTIPS:
+                self._attach_tooltip(child, TOOLTIPS[child.cget("text")])
 
         self.mf = tk.Frame(self.root, bg=C["canvas"])
         self.mf.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
