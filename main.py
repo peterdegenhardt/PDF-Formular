@@ -992,7 +992,10 @@ class App:
 
             # Stempel zeichnen
             for s in self._current_stamps():
-                self._draw_stempel(s)
+                try:
+                    self._draw_stempel(s)
+                except Exception as e:
+                    print(f"Stempel-Fehler: {e}")
 
             self.cv.create_text(cw-10,10, anchor=tk.NE, text=f"{self.zoom*100:.0f}%",
                                fill="white", font=("Arial",10))
@@ -1477,23 +1480,26 @@ class App:
         x, y = self.ox + int(s.x * z), self.oy + int(s.y * z)
         w, h = int(s.w * z), int(s.h * z)
 
-        # Stempel-Hintergrund (rundes Rechteck)
+        # Stempel-Hintergrund (rundes Rechteck) — nur zeichnen wenn sichtbar
+        if w < 5 or h < 5:
+            return
+
+        # Doppelter Rahmen
         self.cv.create_rectangle(x, y, x + w, y + h,
                                 outline=s.color, fill="", width=max(2, int(3*z)),
-                                tags="stempel")
-        # Zweiter Rand
+                                tags="f")
         self.cv.create_rectangle(x + 3, y + 3, x + w - 3, y + h - 3,
                                 outline=s.color, fill="", width=max(1, int(1*z)),
-                                tags="stempel")
-        # Text (mit Rotation über einen schrägen Strich simuliert, da tkinter keine Rotation kann)
+                                tags="f")
+        # Text
         fs = max(10, int(14 * z))
         self.cv.create_text(x + w//2, y + h//2, text=s.text,
                            fill=s.color, font=("Courier", fs, "bold"),
                            angle=s.rotation,
-                           tags="stempel")
-        # Optional: kleiner Unterstrich
+                           tags="f")
+        # Unterstrich
         self.cv.create_line(x + 10, y + h - 8, x + w - 10, y + h - 8,
-                           fill=s.color, width=max(1, int(2*z)), tags="stempel")
+                           fill=s.color, width=max(1, int(2*z)), tags="f")
 
     def _stempel_dialog(self, x, y):
         """Zeigt Stempel-Auswahl und platziert einen Stempel auf der aktuellen Seite."""
@@ -1524,6 +1530,9 @@ class App:
             win.destroy()
             self._render()
             self._status()
+            # Debug: kurz prüfen
+            print(f"Stempel gesetzt: {text} auf Seite {self.current_page}, "
+                  f"jetzt {len(self.stamps.get(str(self.current_page),[]))} Stempel auf dieser Seite")
 
         for text, color, name in Stamp.STANDARD_STEMPEL:
             btn_frame = tk.Frame(frame, bg=color, bd=1, relief=tk.RAISED, cursor="hand2")
