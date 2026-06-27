@@ -1550,8 +1550,8 @@ class App:
         y1 = oy + int(a.y1 * z)
         x2 = ox + int(a.x2 * z)
         y2 = oy + int(a.y2 * z)
-        head_len = max(6, int(30 * z))
-        line_w = max(1, int(6 * z))
+        head_len = max(10, int(50 * z))
+        line_w = max(2, int(12 * z))
         self._draw_arrow_line(self.cv, x1, y1, x2, y2, a.color, width=line_w, head_len=head_len, tags="f")
 
     def _draw_arrow_preview(self, x1, y1, x2, y2):
@@ -1560,7 +1560,7 @@ class App:
 
     def _draw_arrow_pdf(self, d, a):
         """Malt einen Pfeil auf das 300-DPI-PDF-Bild (ImageDraw)."""
-        self._draw_arrow_line_pil(d, a.x1, a.y1, a.x2, a.y2, a.color, width=6, head_len=30)
+        self._draw_arrow_line_pil(d, a.x1, a.y1, a.x2, a.y2, a.color, width=8, head_len=45)
 
     @staticmethod
     def _draw_arrow_line(cv, x1, y1, x2, y2, color, width=2, tags="f", dash=None, head_len=18):
