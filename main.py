@@ -1571,11 +1571,14 @@ class App:
             cv.create_line(x1, y1, x2, y2, fill=color, width=width, tags=tags)
             return
         angle = atan2(dy, dx)
-        # Pfeil-Schaft
+        # Pfeil-Schaft — endet kurz vor der Spitze (sonst ragt die Linie durch)
+        shrink = head_len * 0.4
+        lx2 = x2 - shrink * cos(angle)
+        ly2 = y2 - shrink * sin(angle)
         kw = {"fill": color, "width": width, "tags": tags}
         if dash:
             kw["dash"] = dash
-        cv.create_line(x1, y1, x2, y2, **kw)
+        cv.create_line(x1, y1, lx2, ly2, **kw)
         # Pfeilspitze (Dreieck)
         head_angle = pi / 6  # 30 Grad
         p1x = x2 - head_len * cos(angle - head_angle)
@@ -1594,7 +1597,11 @@ class App:
             d.line([(x1, y1), (x2, y2)], fill=color, width=width)
             return
         angle = atan2(dy, dx)
-        d.line([(x1, y1), (x2, y2)], fill=color, width=width)
+        # Schaft — endet kurz vor der Spitze
+        shrink = head_len * 0.4
+        lx2 = x2 - shrink * cos(angle)
+        ly2 = y2 - shrink * sin(angle)
+        d.line([(x1, y1), (lx2, ly2)], fill=color, width=width)
         head_angle = pi / 6
         p1 = (x2 - head_len * cos(angle - head_angle),
               y2 - head_len * sin(angle - head_angle))
