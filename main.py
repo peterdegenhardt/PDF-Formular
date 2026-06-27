@@ -99,6 +99,7 @@ class Stamp:
         ("ABGELEHNT", "#e74c3c", "rot"),
         ("GESPERRT", "#ff9800", "orange"),
         ("NICHT GEPRÜFT", "#9e9e9e", "grau"),
+        ("GELESEN UND GELACHT", "#e91e63", "pink"),
     ]
 
     def __init__(self, x=0, y=0, text="GEPRÜFT", color="#2ecc71", rotation=15):
