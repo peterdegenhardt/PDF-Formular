@@ -10,7 +10,7 @@ from PIL import Image, ImageTk, ImageDraw, ImageFont
 import pypdfium2 as pdfium
 from collections import Counter
 
-APP_VERSION = "1.7.0"
+APP_VERSION = "1.8.0"
 
 C = {
     "bg": "#1e1e2e", "accent": "#89b4fa", "canvas": "#313244",
@@ -83,6 +83,7 @@ class App:
         self.fields = []
         self.selected = None
         self.template_path = self.template_name = None
+        self.project_path = self.project_name = None
 
         self.font_size = 11
         self.line_height = int(self.font_size * SCALE)
@@ -122,8 +123,12 @@ class App:
         mb.add_cascade(label="Datei", menu=fm)
         fm.add_command(label="📂 PDF öffnen", command=self._open_pdf)
         fm.add_command(label="📋 Vorlage laden", command=self._load_template)
+        fm.add_command(label="🗂️ Projekt öffnen", command=self._load_project)
         fm.add_separator()
         fm.add_command(label="💾 PDF speichern", command=self._save_pdf)
+        fm.add_command(label="💾 Vorlage speichern", command=self._save_template)
+        fm.add_command(label="💾 Projekt speichern", command=self._save_project)
+        fm.add_separator()
         fm.add_command(label="🖨️ Drucken", command=self._print_pdf)
         fm.add_separator()
         fm.add_command(label="Beenden", command=self.root.quit)
@@ -131,14 +136,25 @@ class App:
         tb = tk.Frame(self.root, bg=C["bg"], height=38)
         tb.pack(fill=tk.X, padx=3, pady=(3,0))
 
-        # --- Datei ---
-        self._btn(tb, "PDF öffnen", self._open_pdf, C["accent"])
-        self._btn(tb, "Vorlage öffnen", self._load_template, C["cyan"])
+        # --- 📂 ÖFFNEN-Bereich ---
+        tk.Label(tb, text="📂 ÖFFNEN", bg=C["bg"], fg=C["dim"],
+                font=("Segoe UI",8,"bold")).pack(side=tk.LEFT, padx=(4,2))
+        self._btn(tb, "PDF", self._open_pdf, C["accent"])
+        self._btn(tb, "Vorlage", self._load_template, C["cyan"])
+        self._btn(tb, "Projekt", self._load_project, "#cba6f7")
         tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=3, fill=tk.Y, pady=3)
 
         # --- Modus ---
         self.btn_fill = self._btn(tb, "Ausfüllen", lambda: self._set_mode("fill"), C["green"])
         self.btn_edit = self._btn(tb, "Editor", lambda: self._set_mode("edit"), C["status"])
+        tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=3, fill=tk.Y, pady=3)
+
+        # --- 💾 SPEICHERN-Bereich ---
+        tk.Label(tb, text="💾 SPEICHERN", bg=C["bg"], fg=C["dim"],
+                font=("Segoe UI",8,"bold")).pack(side=tk.LEFT, padx=(4,2))
+        self._btn(tb, "PDF", self._save_pdf, C["green"])
+        self._btn(tb, "Vorlage", self._save_template, C["cyan"])
+        self._btn(tb, "Projekt", self._save_project, "#cba6f7")
         tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=3, fill=tk.Y, pady=3)
 
         # --- Rahmen/Höhe/Raster/Lineal ---
@@ -148,13 +164,8 @@ class App:
         self._btn(tb, "Raster", self._set_grid_dialog, C["yellow"])
         tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=3, fill=tk.Y, pady=3)
 
-        # --- Export ---
-        self._btn(tb, "Vorlage speichern", self._save_template, C["cyan"])
+        # --- Drucken / Zoom ---
         self._btn(tb, "Drucken", self._print_pdf, C["yellow"])
-        self._btn(tb, "PDF speichern", self._save_pdf, C["green"])
-        tk.Frame(tb, bg=C["status"], width=2).pack(side=tk.LEFT, padx=3, fill=tk.Y, pady=3)
-
-        # --- Zoom ---
         self._btn(tb, "−", lambda: self._do_zoom(0.8), C["status"], fg=C["text"])
         self._btn(tb, "+", lambda: self._do_zoom(1.25), C["status"], fg=C["text"])
         self._btn(tb, "1:1", self._zoom_reset, C["status"], fg=C["text"])
@@ -286,6 +297,57 @@ class App:
                       f, indent=2, ensure_ascii=False)
         self.template_path, self.template_name = p, name
         messagebox.showinfo("Gespeichert", f"'{name}', {len(self.fields)} Felder"); self._status()
+
+    # ─── Projekt ──────────────────────────────────────────────
+    def _load_project(self):
+        """Lädt ein Projekt-JSON mit den Feldwerten."""
+        p = filedialog.askopenfilename(title="Projekt öffnen", filetypes=[("JSON", "*.json"), ("*", "*.*")])
+        if not p: return
+        try:
+            with open(p, encoding='utf-8') as f: data = json.load(f)
+            # PDF automatisch laden, falls referenziert
+            pdf = data.get("pdf", "")
+            if pdf and os.path.exists(pdf):
+                self._load_pdf(pdf)
+            elif pdf:
+                messagebox.showwarning("PDF fehlt", f"PDF nicht gefunden:\n{pdf}\nBitte manuell öffnen.")
+            # Vorlage laden (Felddefinitionen)
+            if "fields" in data:
+                self.fields.clear()
+                for item in data["fields"]:
+                    f = FieldRect.from_dict(item)
+                    # Werte aus Projekt übernehmen
+                    val = data.get("values", {}).get(f.label, "")
+                    if val:
+                        f.value = val
+                    self.fields.append(f)
+            self.selected = None
+            self.project_path, self.project_name = p, data.get("name", os.path.basename(p))
+            self._render(); self._status()
+            n_val = sum(1 for f in self.fields if f.value)
+            messagebox.showinfo("Geladen", f"Projekt '{self.project_name}', {len(self.fields)} Felder ({n_val} ausgefüllt)")
+        except Exception as e: messagebox.showerror("Fehler", f"Projekt: {e}")
+
+    def _save_project(self):
+        """Speichert Felder + Werte als Projekt-JSON."""
+        if not self.fields:
+            return messagebox.showwarning("Leer", "Keine Felder im Projekt.")
+        name = simpledialog.askstring("Name", "Projektname:", initialvalue=self.project_name or "Ohne Namen")
+        if not name: return
+        p = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON", "*.json")],
+                                         initialfile=f"{name.lower().replace(' ','_')}.json")
+        if not p: return
+        data = {
+            "name": name,
+            "pdf": self.pdf_path or "",
+            "fields": [fld.to_dict() for fld in self.fields],
+            "values": {fld.label: fld.value for fld in self.fields if fld.value},
+        }
+        with open(p, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        self.project_path, self.project_name = p, name
+        n_val = sum(1 for f in self.fields if f.value)
+        messagebox.showinfo("Gespeichert", f"Projekt '{name}', {n_val} Feld(er) ausgefüllt"); self._status()
 
     # ─── Zoom ─────────────────────────────────────────────────
     def _fit_zoom(self):
@@ -785,10 +847,11 @@ class App:
         mt = "EDITOR" if self.mode=="edit" else "AUSFUELLEN"
         fc = len(self.fields)
         sel = f" | {self.selected.label}" if self.selected else ""
-        tpl = f" | {self.template_name}" if self.template_name else ""
+        tpl = f" | Vorlage:{self.template_name}" if self.template_name else ""
+        proj = f" | Projekt:{self.project_name}" if self.project_name else ""
         akt = f" | {self.active_field.label}" if self.active_field else ""
         fr = " | Rahmen AUS" if not self.show_frames else ""
-        self.sb.config(text=f"{mt} | {pdf}{tpl} | {fc} Feld(er){sel}{akt}{fr} | Raster {self.grid_size}px")
+        self.sb.config(text=f"{mt} | {pdf}{tpl}{proj} | {fc} Feld(er){sel}{akt}{fr} | Raster {self.grid_size}px")
 
 
 def main():
