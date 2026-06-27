@@ -1550,8 +1550,8 @@ class App:
         y1 = oy + int(a.y1 * z)
         x2 = ox + int(a.x2 * z)
         y2 = oy + int(a.y2 * z)
-        head_len = max(10, int(50 * z))
-        line_w = max(2, int(12 * z))
+        head_len = max(3, int(50 * z))
+        line_w = max(1, int(12 * z))
         self._draw_arrow_line(self.cv, x1, y1, x2, y2, a.color, width=line_w, head_len=head_len, tags="f")
 
     def _draw_arrow_preview(self, x1, y1, x2, y2):
