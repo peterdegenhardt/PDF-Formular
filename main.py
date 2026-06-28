@@ -465,11 +465,11 @@ class App:
 
         self._tool_buttons = {}
         for icon, name, tip in werkzeuge:
-            btn = tk.Button(self.toolbox, text=icon, font=("Segoe UI",12),
+            btn = tk.Button(self.toolbox, text=icon, font=("Segoe UI",13),
                           bg=C["bg"], fg=C["text"],
-                          activebackground=C["accent"], activeforeground="#11111b",
-                          relief=tk.RAISED, bd=2, pady=2, padx=0,
-                          cursor="hand2",
+                          activebackground="#d0d0d0", activeforeground=C["text"],
+                          relief=tk.FLAT, bd=0, pady=3, padx=0,
+                          cursor="hand2", width=3,
                           command=_tool_btn_cmd(name))
             btn.pack(pady=(0,2), padx=2, fill=tk.X)
             self._tool_buttons[name] = btn
@@ -479,11 +479,11 @@ class App:
                 btn.bind("<Button-3>", lambda e, n=name: self._tool_settings_dialog(n))
 
         # Toolbox: Datum-Button unter den Werkzeugen
-        self.btn_date = tk.Button(self.toolbox, text="📅", font=("Segoe UI",12),
+        self.btn_date = tk.Button(self.toolbox, text="📅", font=("Segoe UI",13),
                                 bg=C["bg"], fg=C["text"],
-                                activebackground=C["accent"], activeforeground="#11111b",
-                                relief=tk.RAISED, bd=2, pady=2, padx=0,
-                                cursor="hand2",
+                                activebackground="#d0d0d0", activeforeground=C["text"],
+                                relief=tk.FLAT, bd=0, pady=3, padx=0,
+                                cursor="hand2", width=3,
                                 command=self._insert_date)
         self.btn_date.pack(pady=(8,2), padx=2, fill=tk.X)
         self._attach_tooltip(self.btn_date, "Aktuelles Datum einfügen (TT.MM.JJJJ)")
@@ -491,11 +491,11 @@ class App:
         # Toolbox: Beenden-Button ganz unten
         self.toolbox_padding = tk.Frame(self.toolbox, bg=C["bg"])
         self.toolbox_padding.pack(fill=tk.BOTH, expand=True)
-        self.btn_exit = tk.Button(self.toolbox, text="❌", font=("Segoe UI",12),
+        self.btn_exit = tk.Button(self.toolbox, text="❌", font=("Segoe UI",13),
                                 bg=C["red"], fg="#11111b",
-                                activebackground=C["red"], activeforeground="#11111b",
-                                relief=tk.RAISED, bd=2, pady=2, padx=0,
-                                cursor="hand2",
+                                activebackground="#c0392b", activeforeground="#11111b",
+                                relief=tk.FLAT, bd=0, pady=3, padx=0,
+                                cursor="hand2", width=3,
                                 command=self._exit_app)
         self.btn_exit.pack(side=tk.BOTTOM, pady=(0,6), padx=2)
         self._attach_tooltip(self.btn_exit, "Beenden")
@@ -539,12 +539,12 @@ class App:
     def _set_tool(self, name):
         """Wählt ein Werkzeug aus der Toolbox."""
         self.selected_tool = name
-        # Buttons visuell hervorheben
+        # Buttons visuell hervorheben — flach, aktiv = accent
         for n, btn in self._tool_buttons.items():
             if n == name:
-                btn.configure(bg=C["accent"], fg="#11111b", relief=tk.RAISED)
+                btn.configure(bg=C["accent"], fg="#11111b", relief=tk.FLAT)
             else:
-                btn.configure(bg=C["bg"], fg=C["text"], relief=tk.RAISED)
+                btn.configure(bg=C["bg"], fg=C["text"], relief=tk.FLAT)
         self._status()
 
     def _set_height_dialog(self):
@@ -804,9 +804,9 @@ class App:
                 self.toolbox_padding.configure(bg=C["bg"])
                 for n, btn in self._tool_buttons.items():
                     if n == self.selected_tool:
-                        btn.configure(bg=C["accent"], fg="#11111b", relief=tk.RAISED)
+                        btn.configure(bg=C["accent"], fg="#11111b", relief=tk.FLAT)
                     else:
-                        btn.configure(bg=C["bg"], fg=C["text"], relief=tk.RAISED)
+                        btn.configure(bg=C["bg"], fg=C["text"], relief=tk.FLAT)
             # Page-Label einfärben
             if hasattr(self, 'page_label'):
                 self.page_label.configure(bg=C["bg"], fg=C["text"])
@@ -970,7 +970,7 @@ class App:
         if self.selected_tool:
             self.selected_tool = None
             for n, btn in self._tool_buttons.items():
-                btn.configure(bg=C["bg"], fg=C["text"], relief=tk.RAISED)
+                btn.configure(bg=C["bg"], fg=C["text"], relief=tk.FLAT)
             self._status()
 
     def _set_mode(self, mode):
@@ -979,7 +979,7 @@ class App:
         # Werkzeug-Modus beim Modus-Wechsel zurücksetzen
         self.selected_tool = None
         for n, btn in self._tool_buttons.items():
-            btn.configure(bg=C["bg"], fg=C["text"], relief=tk.RAISED)
+            btn.configure(bg=C["bg"], fg=C["text"], relief=tk.FLAT)
         if mode == "fill":
             self.btn_fill.configure(bg=C["accent"], fg="#11111b")
             self.btn_edit.configure(bg=C["status"], fg=C["dim"])
