@@ -446,7 +446,7 @@ class App:
             if isinstance(child, tk.Button) and child.cget("text") in TOOLTIPS:
                 self._attach_tooltip(child, TOOLTIPS[child.cget("text")])
         # ─── Toolbox links ─────────────────────────────────────
-        self.toolbox = tk.Frame(self.root, bg=C["bg"], width=56)
+        self.toolbox = tk.Frame(self.root, bg=C["bg"], width=52)
         self.toolbox.pack(side=tk.LEFT, fill=tk.Y, padx=(4,0), pady=4)
         self.toolbox.pack_propagate(False)
 
@@ -468,10 +468,10 @@ class App:
             btn = tk.Button(self.toolbox, text=icon, font=("Segoe UI",12),
                           bg=C["bg"], fg=C["text"],
                           activebackground=C["accent"], activeforeground="#11111b",
-                          relief=tk.RAISED, bd=2, pady=3, padx=1,
-                          cursor="hand2", width=3,
+                          relief=tk.RAISED, bd=2, pady=2, padx=0,
+                          cursor="hand2",
                           command=_tool_btn_cmd(name))
-            btn.pack(pady=(0,2), padx=4, fill=tk.X)
+            btn.pack(pady=(0,2), padx=2, fill=tk.X)
             self._tool_buttons[name] = btn
             self._attach_tooltip(btn, tip)
             # Rechtsklick für Werkzeug-Einstellungen
@@ -482,10 +482,10 @@ class App:
         self.btn_date = tk.Button(self.toolbox, text="📅", font=("Segoe UI",12),
                                 bg=C["bg"], fg=C["text"],
                                 activebackground=C["accent"], activeforeground="#11111b",
-                                relief=tk.RAISED, bd=2, pady=3, padx=1,
-                                cursor="hand2", width=3,
+                                relief=tk.RAISED, bd=2, pady=2, padx=0,
+                                cursor="hand2",
                                 command=self._insert_date)
-        self.btn_date.pack(pady=(8,2), padx=4, fill=tk.X)
+        self.btn_date.pack(pady=(8,2), padx=2, fill=tk.X)
         self._attach_tooltip(self.btn_date, "Aktuelles Datum einfügen (TT.MM.JJJJ)")
 
         # Toolbox: Beenden-Button ganz unten
@@ -494,10 +494,10 @@ class App:
         self.btn_exit = tk.Button(self.toolbox, text="❌", font=("Segoe UI",12),
                                 bg=C["red"], fg="#11111b",
                                 activebackground=C["red"], activeforeground="#11111b",
-                                relief=tk.RAISED, bd=2, pady=3, padx=1,
-                                cursor="hand2", width=3,
+                                relief=tk.RAISED, bd=2, pady=2, padx=0,
+                                cursor="hand2",
                                 command=self._exit_app)
-        self.btn_exit.pack(side=tk.BOTTOM, pady=(0,6), padx=4)
+        self.btn_exit.pack(side=tk.BOTTOM, pady=(0,6), padx=2)
         self._attach_tooltip(self.btn_exit, "Beenden")
 
         # ─── Canvas-Bereich ────────────────────────────────────
