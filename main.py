@@ -1642,12 +1642,12 @@ class App:
         x = self.root.winfo_x() + 180
         y = self.root.winfo_y() + 200
         win.geometry(f"+{x}+{y}")
-        # grab_set erst, nachdem das Fenster sichtbar ist
-        win.update_idletasks()
+        # Warten bis Fenster sichtbar ist, dann grab_set
         try:
+            win.wait_visibility()
             win.grab_set()
         except tk.TclError:
-            pass  # Fallback falls grab fehlschlägt
+            pass  # Fallback
 
         is_arrow = tool == "Pfeil"
         color_key = "tool_arrow_color" if is_arrow else "tool_line_color"
