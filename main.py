@@ -1656,20 +1656,24 @@ class App:
         cur_width = getattr(self, width_key, 3)
 
         # ─── Farbe ───
+        color_var = tk.StringVar(value=cur_color)
         tk.Label(win, text="Farbe:", bg=C["bg"], fg=C["text"],
                  font=("Segoe UI", 10, "bold")).grid(row=0, column=0, sticky="w", padx=10, pady=(10,4))
 
-        farben = [("#e74c3c", "Rot"), ("#2ecc71", "Grün"), ("#3498db", "Blau"),
-                  ("#f39c12", "Orange"), ("#9b59b6", "Lila"), ("#1e1e2e", "Schwarz"),
-                  ("#000000", "Schwarz"), ("#555555", "Grau")]
-        # Deduplizieren
-        gesehen = set()
-        farb_btns = []
-        for c, lbl in farben:
-            if c in gesehen: continue
-            gesehen.add(c)
-            row = 0
-            col = len(farb_btns) + 1
+        def _set_color(c):
+            color_var.set(c)
+            # Alle Buttons aktualisieren
+            for b, bc in farb_refs:
+                if bc == c:
+                    b.configure(text="✓", relief=tk.SUNKEN)
+                else:
+                    b.configure(text="  ", relief=tk.FLAT)
+
+        farben_liste = [("#e74c3c", "Rot"), ("#2ecc71", "Grün"), ("#3498db", "Blau"),
+                        ("#f39c12", "Orange"), ("#9b59b6", "Lila"),
+                        ("#1e1e2e", "Schwarz"), ("#555555", "Grau")]
+        farb_refs = []
+        for col_idx, (c, lbl) in enumerate(farben_liste):
             if c == cur_color:
                 btn = tk.Button(win, text="✓", font=("Segoe UI", 8, "bold"),
                                bg=c, fg="white" if c in ("#1e1e2e","#000000") else "#11111b",
@@ -1678,9 +1682,9 @@ class App:
                 btn = tk.Button(win, text="  ", font=("Segoe UI", 8),
                                bg=c, fg="white" if c in ("#1e1e2e","#000000") else "#11111b",
                                relief=tk.FLAT, bd=2, width=3, cursor="hand2",
-                               command=lambda c=c: (setattr(self, color_key, c), win.destroy()))
-            btn.grid(row=0, column=col, padx=2, pady=(10,4))
-            farb_btns.append(btn)
+                               command=lambda cc=c: _set_color(cc))
+            btn.grid(row=0, column=col_idx + 1, padx=2, pady=(10,4))
+            farb_refs.append((btn, c))
 
         # ─── Strichstärke ───
         tk.Label(win, text="Strichstärke:", bg=C["bg"], fg=C["text"],
@@ -1705,8 +1709,8 @@ class App:
         btn_row = 3 if is_arrow else 2
         tk.Button(win, text="OK", font=("Segoe UI", 10, "bold"),
                  bg=C["green"], fg="#11111b", bd=0, padx=20, pady=4, cursor="hand2",
-                 command=lambda c=cur_color: (
-                     setattr(self, color_key, c),
+                 command=lambda: (
+                     setattr(self, color_key, color_var.get()),
                      setattr(self, width_key, width_var.get()),
                      setattr(self, "tool_arrow_head_len", head_len_var.get()) if is_arrow else None,
                      win.destroy())
