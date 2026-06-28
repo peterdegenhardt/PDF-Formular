@@ -4,11 +4,13 @@ Eine tkinter-Desktop-App zum Ausfüllen und Bearbeiten von PDF-Formularen sowie 
 
 ## Features
 
-- PDF-Formularfelder ausfüllen
-- Template-Editor mit Zeichenwerkzeugen (Rechteck, Linie, Text)
-- Mehrseiten-Navigation
-- Vorschau und Export
+- PDF-Formularfelder ausfüllen (Text, Checkbox, Auswahllisten)
+- Template-Editor mit Zeichenwerkzeugen (Pfeil, Linie, Rechteck, Ellipse, Maske, Bild, Stempel)
+- Datumsfeld-Werkzeug
+- Mehrseiten-Navigation mit Vor-/Zurück
+- Vorschau und PDF-Export
 - Dunkles Design (Catppuccin Mokka)
+- Farbige Symbolleisten-Icons
 
 ## Installation
 
@@ -38,6 +40,7 @@ Eine tkinter-Desktop-App zum Ausfüllen und Bearbeiten von PDF-Formularen sowie 
 ## Build (Windows EXE)
 
 `build-exe.bat` ausführen — erzeugt eine standalone EXE mit PyInstaller.
+Die Icons aus dem `icons/`-Ordner werden automatisch neben die EXE kopiert.
 
 ## Lizenz
 

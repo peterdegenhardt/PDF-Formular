@@ -69,6 +69,8 @@ if exist "dist\PDF-Formular.exe" (
     echo.
     echo Kopiere Ausgabe.pdf neben die EXE...
     copy Ausgabe.pdf dist\Ausgabe.pdf >nul
+    echo Kopiere Icons neben die EXE...
+    if exist icons\NUL xcopy /E /I /Y icons dist\icons >nul
     echo Alles bereit.
 ) else (
     echo Fehler beim Bauen der EXE.
