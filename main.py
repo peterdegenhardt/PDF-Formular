@@ -1618,8 +1618,10 @@ class App:
         if not self.pdf_image: raise ValueError("Kein PDF")
         img = self.pdf_image.copy()
         d = ImageDraw.Draw(img)
+        print(f"_build_pdf: {len(self._current_fields())} felder")
 
         for f in self._current_fields():
+            print(f"  feld: label={f.label}, type={f.type}, value={f.value}")
             if f.type == "text" and f.value:
                 # Schrift in Punkt — aus Einstellung
                 pt = max(6, min(36, self.font_size))
@@ -1634,23 +1636,17 @@ class App:
                 d.text((f.x1 + 2, draw_y), str(f.value), fill=fill_color, font=font)
             elif f.type == "checkbox" and f.value in (True,"True","true","1"):
                 # ✓-Haken zentriert im Feld
-                try:
-                    ck_size = min(18, max(8, (f.y2 - f.y1) * 0.7))
-                    ck_font = get_font(ck_size, self.font_name)
-                    if ck_font is None:
-                        ck_font = get_font(ck_size)
-                    cx, cy = (f.x1 + f.x2) // 2, (f.y1 + f.y2) // 2
-                    bbox = ck_font.getbbox("✓")
-                    ck_w = bbox[2] - bbox[0]
-                    ck_h = bbox[3] - bbox[1]
-                    dx = cx - ck_w // 2
-                    dy = cy - ck_h // 2 - bbox[1]
-                    d.text((dx, dy), "✓", fill=(0,0,0), font=ck_font)
-                except Exception:
-                    # Letzter Fallback: dickes Kreuz aus dicken Linien
-                    pad = 4
-                    d.line([(f.x1+pad, f.y1+pad), (f.x2-pad, f.y2-pad)], fill=(0,0,0), width=4)
-                    d.line([(f.x1+pad, f.y2-pad), (f.x2-pad, f.y1+pad)], fill=(0,0,0), width=4)
+                ck_size = min(18, max(8, (f.y2 - f.y1) * 0.7))
+                ck_font = get_font(ck_size, self.font_name)
+                if ck_font is None:
+                    ck_font = get_font(ck_size)
+                cx, cy = (f.x1 + f.x2) // 2, (f.y1 + f.y2) // 2
+                bbox = ck_font.getbbox(chr(0x2713))
+                ck_w = bbox[2] - bbox[0]
+                ck_h = bbox[3] - bbox[1]
+                dx = cx - ck_w // 2
+                dy = cy - ck_h // 2 - bbox[1]
+                d.text((dx, dy), chr(0x2713), fill=(0,0,0), font=ck_font)
             elif f.type == "radio" and f.value in (True,"True","true","1"):
                 d.ellipse([f.x1+4,f.y1+4,f.x1+11,f.y1+11], fill=(0,0,0))
 
