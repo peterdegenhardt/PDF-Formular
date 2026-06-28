@@ -150,6 +150,25 @@ class Rect:
                 "width": self.width}
 
 
+class Mask:
+    """Eine Maske auf dem PDF — deckt Inhalte ab (standardmäßig weiß gefüllt)."""
+    def __init__(self, x1=0, y1=0, x2=0, y2=0, color="#000000", fill="#ffffff", width=2):
+        self.x1, self.y1 = min(x1, x2), min(y1, y2)
+        self.x2, self.y2 = max(x1, x2), max(y1, y2)
+        self.color = color
+        self.fill = fill
+        self.width = width
+
+    def to_dict(self):
+        return {"x1": self.x1, "y1": self.y1,
+                "x2": self.x2, "y2": self.y2,
+                "color": self.color, "fill": self.fill,
+                "width": self.width}
+
+    def contains(self, px, py):
+        return self.x1 <= px <= self.x2 and self.y1 <= py <= self.y2
+
+
 class Line:
     """Eine Linie auf dem PDF von (x1,y1) nach (x2,y2)."""
     def __init__(self, x1=0, y1=0, x2=0, y2=0, color="#e74c3c", width=3):
@@ -207,6 +226,7 @@ class App:
         self.rects = {}   # dict: {"0": [Rect, ...], "1": [...]}
         self.lines = {}   # dict: {"0": [Line, ...], "1": [...]}
         self.ellipses = {}   # dict: {"0": [Ellipse, ...], "1": [...]}
+        self.masks = {}   # dict: {"0": [Mask, ...], "1": [...]}
 
         # --- Undo-History ---
         self.undo_stack = {}  # {page_key: [snapshots]}
@@ -248,6 +268,9 @@ class App:
         self.tool_rect_width = 3
         self.tool_ellipse_color = "#4a90d9"
         self.tool_ellipse_width = 3
+        self.tool_mask_color = "#000000"
+        self.tool_mask_fill = "#ffffff"
+        self.tool_mask_width = 2
         self._stempel_images = {}  # PIL-Images für PDF-Export
         self._stempel_tk = {}  # tkinter-PhotoImages für Canvas
 
@@ -422,7 +445,7 @@ class App:
             self._tool_buttons[name] = btn
             self._attach_tooltip(btn, tip)
             # Rechtsklick für Werkzeug-Einstellungen
-            if name in ("Linie", "Pfeil", "Rechteck", "Ellipse"):
+            if name in ("Linie", "Pfeil", "Rechteck", "Ellipse", "Maske"):
                 btn.bind("<Button-3>", lambda e, n=name: self._tool_settings_dialog(n))
 
         # Toolbox: Datum-Button unter den Werkzeugen
@@ -652,6 +675,7 @@ class App:
         self.rects = {}
         self.lines = {}
         self.ellipses = {}
+        self.masks = {}
         self._stempel_images = {}
         self._stempel_tk = {}
         self.current_page = 0
@@ -878,6 +902,7 @@ class App:
             "rects": [r.to_dict() for r in self._current_rects()],
             "lines": [ln.to_dict() for ln in self._current_lines()],
             "ellipses": [el.to_dict() for el in self._current_ellipses()],
+            "masks": [m.to_dict() for m in self._current_masks()],
         }
         if key not in self.undo_stack:
             self.undo_stack[key] = []
@@ -904,6 +929,7 @@ class App:
         self.rects[key_st] = [Rect(**r) for r in snap["rects"]]
         self.lines[key_st] = [Line(**l) for l in snap["lines"]]
         self.ellipses[key_st] = [Ellipse(**e) for e in snap["ellipses"]]
+        self.masks[key_st] = [Mask(**m) for m in snap["masks"]]
         self._render()
         self._status()
 
@@ -1206,6 +1232,13 @@ class App:
                 except Exception as e:
                     print(f"Ellipsen-Fehler: {e}")
 
+            # Masken zeichnen
+            for m in self._current_masks():
+                try:
+                    self._draw_mask(m)
+                except Exception as e:
+                    print(f"Masken-Fehler: {e}")
+
             self.cv.create_text(cw-10,10, anchor=tk.NE, text=f"{self.zoom*100:.0f}%",
                                fill="white", font=("Arial",10))
         except Exception as e: print(f"Render: {e}")
@@ -1338,6 +1371,11 @@ class App:
         if self.selected_tool == "Ellipse":
             self._ellipse_start = (int(px), int(py))
             self._drag_mode = "ellipse"
+            return
+
+        if self.selected_tool == "Maske":
+            self._mask_start = (int(px), int(py))
+            self._drag_mode = "mask"
             return
 
         if self.selected_tool == "Linie":
@@ -1479,6 +1517,21 @@ class App:
             self.cv.create_oval(ex1, ey1, ex2, ey2,
                                 outline=C["accent"], width=2, dash=(4, 4), tags="drag")
 
+        elif dm == "mask":
+            px, py = self._ic(e)
+            x1, y1 = self._mask_start
+            if abs(px - x1) < 3 and abs(py - y1) < 3:
+                return
+            self.cv.delete("drag")
+            z = self.zoom
+            ox, oy = self.ox, self.oy
+            mx1 = ox + int(min(x1, px) * z)
+            my1 = oy + int(min(y1, py) * z)
+            mx2 = ox + int(max(x1, px) * z)
+            my2 = oy + int(max(y1, py) * z)
+            self.cv.create_rectangle(mx1, my1, mx2, my2,
+                                     outline=C["accent"], width=2, dash=(4, 4), tags="drag")
+
         elif dm == "line":
             px, py = self._ic(e)
             x1, y1 = self._line_start
@@ -1566,6 +1619,20 @@ class App:
                 self.ellipses[key].append(Ellipse(x1=x1, y1=y1, x2=int(px), y2=int(py),
                                                   color=self.tool_ellipse_color,
                                                   width=self.tool_ellipse_width))
+                self._render()
+                self._status()
+        elif dm == "mask" and e:
+            px, py = self._ic(e)
+            x1, y1 = self._mask_start
+            if abs(px - x1) >= 8 or abs(py - y1) >= 8:
+                self._undo_snapshot()
+                key = str(self.current_page)
+                if key not in self.masks:
+                    self.masks[key] = []
+                self.masks[key].append(Mask(x1=x1, y1=y1, x2=int(px), y2=int(py),
+                                           color=self.tool_mask_color,
+                                           fill=self.tool_mask_fill,
+                                           width=self.tool_mask_width))
                 self._render()
                 self._status()
         elif dm == "line" and e:
@@ -1691,6 +1758,15 @@ class App:
                     self._render()
                     self._status()
                 return
+        # Maske loeschen
+        for m in reversed(self._current_masks()):
+            if m.contains(px, py):
+                if messagebox.askyesno("Loeschen", "Diese Maske loeschen?"):
+                    self._undo_snapshot()
+                    self._current_masks().remove(m)
+                    self._render()
+                    self._status()
+                return
         # Nichts getroffen -> Panning
         self.panning = True
         self.pan_x, self.pan_y = e.x, e.y
@@ -1733,18 +1809,27 @@ class App:
         is_arrow = tool == "Pfeil"
         is_rect = tool == "Rechteck"
         is_ellipse = tool == "Ellipse"
-        if is_ellipse:
+        is_mask = tool == "Maske"
+        if is_mask:
+            color_key = "tool_mask_color"
+            width_key = "tool_mask_width"
+            fill_key = "tool_mask_fill"
+        elif is_ellipse:
             color_key = "tool_ellipse_color"
             width_key = "tool_ellipse_width"
+            fill_key = None
         elif is_rect:
             color_key = "tool_rect_color"
             width_key = "tool_rect_width"
+            fill_key = None
         elif is_arrow:
             color_key = "tool_arrow_color"
             width_key = "tool_arrow_width"
+            fill_key = None
         else:
             color_key = "tool_line_color"
             width_key = "tool_line_width"
+            fill_key = None
         cur_color = getattr(self, color_key, "#e74c3c")
         cur_width = getattr(self, width_key, 3)
 
@@ -1799,13 +1884,47 @@ class App:
                        buttonbackground=C["accent"]).grid(row=2, column=1, columnspan=3, sticky="w", padx=10)
 
         # ─── OK ───
-        btn_row = 3 if is_arrow else 2
+        fill_var = None
+        if is_mask:
+            # ─── Füllfarbe ───
+            cur_fill = getattr(self, fill_key, "#ffffff")
+            fill_var = tk.StringVar(value=cur_fill)
+            tk.Label(win, text="Füllfarbe:", bg=C["bg"], fg=C["text"],
+                     font=("Segoe UI", 10, "bold")).grid(row=2, column=0, sticky="w", padx=10, pady=(6,4))
+
+            def _set_fill(c):
+                fill_var.set(c)
+                for b, bc in fill_refs:
+                    if bc == c:
+                        b.configure(text="✓", relief=tk.SUNKEN)
+                    else:
+                        b.configure(text="  ", relief=tk.FLAT)
+
+            fill_farben = [("#ffffff", "Weiß"), ("#cccccc", "Hellgrau"), ("#888888", "Grau"),
+                          ("#000000", "Schwarz"), ("#e74c3c", "Rot"), ("#2ecc71", "Grün"),
+                          ("#3498db", "Blau"), ("#f1c40f", "Gelb")]
+            fill_refs = []
+            for col_idx, (c, lbl) in enumerate(fill_farben):
+                if c == cur_fill:
+                    btn = tk.Button(win, text="✓", font=("Segoe UI", 8, "bold"),
+                                   bg=c, fg="white" if c in ("#000000","#888888") else "#11111b",
+                                   relief=tk.SUNKEN, bd=2, width=3, cursor="hand2")
+                else:
+                    btn = tk.Button(win, text="  ", font=("Segoe UI", 8),
+                                   bg=c, fg="white" if c in ("#000000","#888888") else "#11111b",
+                                   relief=tk.FLAT, bd=2, width=3, cursor="hand2",
+                                   command=lambda cc=c: _set_fill(cc))
+                btn.grid(row=2, column=col_idx + 1, padx=2, pady=(6,4))
+                fill_refs.append((btn, c))
+
+        btn_row = 4 if is_mask else (3 if is_arrow else 2)
         tk.Button(win, text="OK", font=("Segoe UI", 10, "bold"),
                  bg=C["green"], fg="#11111b", bd=0, padx=20, pady=4, cursor="hand2",
                  command=lambda: (
                      setattr(self, color_key, color_var.get()),
                      setattr(self, width_key, width_var.get()),
                      setattr(self, "tool_arrow_head_len", head_len_var.get()) if is_arrow else None,
+                     setattr(self, fill_key, fill_var.get()) if is_mask else None,
                      win.destroy())
                  ).grid(row=btn_row, column=0, columnspan=5, pady=(12,10))
 
@@ -1949,6 +2068,13 @@ class App:
             except Exception as e:
                 print(f"Ellipsen-PDF-Fehler: {e}")
 
+        # Masken auf PDF malen
+        for m in self._current_masks():
+            try:
+                self._draw_mask_pdf(d, m)
+            except Exception as e:
+                print(f"Masken-PDF-Fehler: {e}")
+
         tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
         img.save(tmp.name, "PDF", resolution=300)
         return tmp.name
@@ -1999,6 +2125,10 @@ class App:
     def _current_ellipses(self):
         """Gibt die Ellipsen-Liste der aktuellen Seite zurück."""
         return self.ellipses.get(str(self.current_page), [])
+
+    def _current_masks(self):
+        """Gibt die Masken-Liste der aktuellen Seite zurück."""
+        return self.masks.get(str(self.current_page), [])
 
     @staticmethod
     def _point_near_line(px, py, x1, y1, x2, y2, tol=15.0):
@@ -2080,6 +2210,22 @@ class App:
         """Malt eine Ellipse auf das 300-DPI-PDF-Bild (ImageDraw)."""
         d.ellipse([(el.x1, el.y1), (el.x2, el.y2)],
                   outline=el.color, fill=el.fill, width=max(1, el.width))
+
+    def _draw_mask(self, m):
+        """Zeichnet eine Maske auf dem Canvas (weiß gefülltes Rechteck)."""
+        z, ox, oy = self.zoom, self.ox, self.oy
+        x1 = ox + int(m.x1 * z)
+        y1 = oy + int(m.y1 * z)
+        x2 = ox + int(m.x2 * z)
+        y2 = oy + int(m.y2 * z)
+        line_w = max(1, int(m.width * z))
+        self.cv.create_rectangle(x1, y1, x2, y2,
+                                outline=m.color, fill=m.fill, width=line_w, tags="f")
+
+    def _draw_mask_pdf(self, d, m):
+        """Malt eine Maske auf das 300-DPI-PDF-Bild (ImageDraw)."""
+        d.rectangle([(m.x1, m.y1), (m.x2, m.y2)],
+                    outline=m.color, fill=m.fill, width=max(1, m.width))
 
     def _draw_arrow(self, a):
         """Zeichnet einen Pfeil auf dem Canvas — auf Seitenbereich begrenzt."""
