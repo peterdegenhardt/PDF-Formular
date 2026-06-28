@@ -377,7 +377,7 @@ class App:
                                 bg=C["red"], fg="#11111b",
                                 activebackground=C["red"], activeforeground="#11111b",
                                 relief=tk.RAISED, bd=2, pady=4, padx=2,
-                                cursor="hand2", width=3, command=self.root.quit)
+                                cursor="hand2", width=3, command=self._exit_app)
         self.btn_exit.pack(side=tk.BOTTOM, pady=(0,4), padx=2)
         self._attach_tooltip(self.btn_exit, "Beenden")
 
@@ -898,6 +898,12 @@ class App:
         if not p: return
         try:
             with open(p, encoding='utf-8') as f: data = json.load(f)
+            # PDF automatisch laden, falls referenziert
+            pdf = data.get("pdf", "")
+            if pdf and os.path.exists(pdf):
+                self._load_pdf(pdf)
+            elif pdf:
+                messagebox.showwarning("PDF fehlt", f"PDF nicht gefunden:\n{pdf}\nBitte manuell öffnen.")
             raw = data.get("fields", data.get("items", data if isinstance(data,list) else []))
             if isinstance(raw, dict):
                 # Neue Struktur: fields pro Seite
@@ -923,7 +929,7 @@ class App:
                                          initialfile=f"{name.lower().replace(' ','_')}.json")
         if not p: return
         with open(p, 'w', encoding='utf-8') as f:
-            json.dump({"name": name, "fields": {k: [fld.to_dict() for fld in v] for k, v in self.fields.items() if v}},
+            json.dump({"name": name, "pdf": self.pdf_path or "", "fields": {k: [fld.to_dict() for fld in v] for k, v in self.fields.items() if v}},
                       f, indent=2, ensure_ascii=False)
         self.template_path, self.template_name = p, name
         total = sum(len(v) for v in self.fields.values())
@@ -1904,6 +1910,17 @@ class App:
             return "🖱️ Linke Taste: Text eingeben oder Häkchen setzen | Rechte Taste: Bild verschieben | Mausrad: Zoom"
         else:  # edit
             return "🖱️ Links: Feld anlegen | Strg+Klick: Feld verschieben | Mitte: Feld verschieben | Rechts: Bild verschieben | Rad: Zoom | Rechts auf Feld: Löschen"
+
+    def _exit_app(self):
+        """Beendet die App sauber."""
+        try:
+            self.root.destroy()
+        except:
+            pass
+        try:
+            self.root.quit()
+        except:
+            pass
 
     def _status_text(self, msg):
         """Kurztext in die Statusleiste (überschreibt sich nach 3s)."""
