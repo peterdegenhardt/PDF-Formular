@@ -1638,16 +1638,16 @@ class App:
         win.configure(bg=C["bg"])
         win.resizable(False, False)
         win.transient(self.root)
-        win.grab_set()
         x = self.root.winfo_x() + 180
         y = self.root.winfo_y() + 200
         win.geometry(f"+{x}+{y}")
-        # Warten bis Fenster sichtbar ist, dann grab_set
+        # Fenster sichtbar machen, dann Grab — toleriert Fehler
+        win.update()
         try:
-            win.wait_visibility()
             win.grab_set()
         except tk.TclError:
-            pass  # Fallback
+            pass
+        win.lift()
 
         is_arrow = tool == "Pfeil"
         color_key = "tool_arrow_color" if is_arrow else "tool_line_color"
