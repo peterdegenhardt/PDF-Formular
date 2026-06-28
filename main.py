@@ -136,16 +136,18 @@ class Arrow:
 
 class Rect:
     """Ein Rechteck auf dem PDF."""
-    def __init__(self, x1=0, y1=0, x2=0, y2=0, color="#4a90d9", fill=None):
+    def __init__(self, x1=0, y1=0, x2=0, y2=0, color="#4a90d9", fill=None, width=3):
         self.x1, self.y1 = min(x1, x2), min(y1, y2)
         self.x2, self.y2 = max(x1, x2), max(y1, y2)
         self.color = color
         self.fill = fill
+        self.width = width
 
     def to_dict(self):
         return {"x1": self.x1, "y1": self.y1,
-                "x2": self.x2, "y2": self.y2, "color": self.color,
-                "fill": self.fill}
+                "x2": self.x2, "y2": self.y2,
+                "color": self.color, "fill": self.fill,
+                "width": self.width}
 
 
 class Line:
@@ -221,6 +223,8 @@ class App:
         self.tool_arrow_color = "#e74c3c"
         self.tool_arrow_width = 4
         self.tool_arrow_head_len = 25
+        self.tool_rect_color = "#4a90d9"
+        self.tool_rect_width = 3
         self._stempel_images = {}  # PIL-Images für PDF-Export
         self._stempel_tk = {}  # tkinter-PhotoImages für Canvas
 
@@ -395,7 +399,7 @@ class App:
             self._tool_buttons[name] = btn
             self._attach_tooltip(btn, tip)
             # Rechtsklick für Werkzeug-Einstellungen
-            if name in ("Linie", "Pfeil"):
+            if name in ("Linie", "Pfeil", "Rechteck"):
                 btn.bind("<Button-3>", lambda e, n=name: self._tool_settings_dialog(n))
 
         # Toolbox: Datum-Button unter den Werkzeugen
@@ -1493,7 +1497,9 @@ class App:
                 key = str(self.current_page)
                 if key not in self.rects:
                     self.rects[key] = []
-                self.rects[key].append(Rect(x1=x1, y1=y1, x2=int(px), y2=int(py)))
+                self.rects[key].append(Rect(x1=x1, y1=y1, x2=int(px), y2=int(py),
+                                           color=self.tool_rect_color,
+                                           width=self.tool_rect_width))
                 self._render()
                 self._status()
         elif dm == "line" and e:
@@ -1650,8 +1656,16 @@ class App:
         win.lift()
 
         is_arrow = tool == "Pfeil"
-        color_key = "tool_arrow_color" if is_arrow else "tool_line_color"
-        width_key = "tool_arrow_width" if is_arrow else "tool_line_width"
+        is_rect = tool == "Rechteck"
+        if is_rect:
+            color_key = "tool_rect_color"
+            width_key = "tool_rect_width"
+        elif is_arrow:
+            color_key = "tool_arrow_color"
+            width_key = "tool_arrow_width"
+        else:
+            color_key = "tool_line_color"
+            width_key = "tool_line_width"
         cur_color = getattr(self, color_key, "#e74c3c")
         cur_width = getattr(self, width_key, 3)
 
@@ -1915,14 +1929,14 @@ class App:
         y1 = oy + int(r.y1 * z)
         x2 = ox + int(r.x2 * z)
         y2 = oy + int(r.y2 * z)
-        line_w = max(1, int(3 * z))
+        line_w = max(1, int(r.width * z))
         self.cv.create_rectangle(x1, y1, x2, y2,
                                  outline=r.color, fill=r.fill or "", width=line_w, tags="f")
 
     def _draw_rect_pdf(self, d, r):
         """Malt ein Rechteck auf das 300-DPI-PDF-Bild (ImageDraw)."""
         d.rectangle([(r.x1, r.y1), (r.x2, r.y2)],
-                    outline=r.color, fill=r.fill, width=4)
+                    outline=r.color, fill=r.fill, width=max(1, r.width))
 
     @staticmethod
     def _snap_line(px, py, x1, y1, threshold=15):
