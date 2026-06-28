@@ -87,7 +87,7 @@ class FieldRect:
         w = pos.get("w", 100)
         h = pos.get("h", d.get("h", 20))
         return cls(x1=x, y1=y, x2=x+w, y2=y+h,
-                   label=d.get("label", d.get("name", "")), ftype=d.get("type", "text"))
+                   label=d.get("label", d.get("name", "")), ftype="text" if d.get("type") == "radio" else d.get("type", "text"))
 
 
 class Stamp:
