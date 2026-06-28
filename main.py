@@ -460,40 +460,54 @@ class App:
             ("🖼️", "Bild", "Bild einfügen"),
             ("🕹️", "Stempel", "Stempel aufdrücken"),
         ]
-        self._tool_buttons = {}
-        for icon, name, tip in werkzeuge:
-            btn = tk.Button(self.toolbox, text=icon, font=("Segoe UI",13),
-                          bg=C["bg"], fg=C["text"],
-                          activebackground=C["accent"], activeforeground="#11111b",
-                          relief=tk.RAISED, bd=2, pady=4, padx=1,
-                          cursor="hand2", width=3,
-                          command=lambda n=name: self._set_tool(n))
-            btn.pack(pady=(0,2), padx=3, fill=tk.X)
-            self._tool_buttons[name] = btn
-            self._attach_tooltip(btn, tip)
+
+        def _make_tool_btn(parent, icon, name, tip, bg=C["bg"], fg=C["text"], cmd=None, bottom=False):
+            """Erzeugt einen modern aussehenden Tool-Button als Label mit Events."""
+            lbl = tk.Label(parent, text=icon, font=("Segoe UI",13),
+                          bg=bg, fg=fg, cursor="hand2",
+                          relief=tk.FLAT, bd=0,
+                          padx=2, pady=4, width=3)
+            # Hover-Effekte — hellgrau nur wenn nicht aktiv (accent)
+            def on_enter(e, l=lbl, b=bg):
+                if l.cget("bg") != C["accent"]:
+                    l.config(bg="#e0e0e0")
+            def on_leave(e, l=lbl, b=bg):
+                if l.cget("bg") != C["accent"]:
+                    l.config(bg=b)
+            def on_click(e, n=name):
+                self._set_tool(n)
+            lbl.bind("<Enter>", on_enter)
+            lbl.bind("<Leave>", on_leave)
+            lbl.bind("<Button-1>", on_click)
             # Rechtsklick für Werkzeug-Einstellungen
             if name in ("Linie", "Pfeil", "Rechteck", "Ellipse", "Maske"):
-                btn.bind("<Button-3>", lambda e, n=name: self._tool_settings_dialog(n))
+                lbl.bind("<Button-3>", lambda e, n=name: self._tool_settings_dialog(n))
+            self._attach_tooltip(lbl, tip)
+            return lbl
+
+        self._tool_buttons = {}
+        for icon, name, tip in werkzeuge:
+            btn = _make_tool_btn(self.toolbox, icon, name, tip)
+            btn.pack(pady=(0,2), padx=4, fill=tk.X)
+            self._tool_buttons[name] = btn
 
         # Toolbox: Datum-Button unter den Werkzeugen
-        self.btn_date = tk.Button(self.toolbox, text="📅", font=("Segoe UI",13),
-                                bg=C["bg"], fg=C["text"],
-                                activebackground=C["accent"], activeforeground="#11111b",
-                                relief=tk.RAISED, bd=2, pady=4, padx=1,
-                                cursor="hand2", width=3,
-                                command=self._insert_date)
-        self.btn_date.pack(pady=(8,2), padx=3, fill=tk.X)
-        self._attach_tooltip(self.btn_date, "Aktuelles Datum einfügen (TT.MM.JJJJ)")
+        self.btn_date = _make_tool_btn(self.toolbox, "📅", "Datum",
+                                       "Aktuelles Datum einfügen (TT.MM.JJJJ)")
+        self.btn_date.pack(pady=(8,2), padx=4, fill=tk.X)
+        # Datum hat eigenes cmd: _insert_date statt _set_tool
+        self.btn_date.unbind("<Button-1>")
+        self.btn_date.bind("<Button-1>", lambda e: self._insert_date())
 
         # Toolbox: Beenden-Button ganz unten
         self.toolbox_padding = tk.Frame(self.toolbox, bg=C["bg"])
         self.toolbox_padding.pack(fill=tk.BOTH, expand=True)
-        self.btn_exit = tk.Button(self.toolbox, text="❌", font=("Segoe UI",13),
-                                bg=C["red"], fg="#11111b",
-                                activebackground=C["red"], activeforeground="#11111b",
-                                relief=tk.RAISED, bd=2, pady=4, padx=1,
-                                cursor="hand2", width=3, command=self._exit_app)
-        self.btn_exit.pack(side=tk.BOTTOM, pady=(0,6), padx=3)
+        self.btn_exit = _make_tool_btn(self.toolbox, "❌", "Exit", "Beenden",
+                                       bg=C["red"], fg="#11111b", bottom=True)
+        # Exit hat eigenes cmd
+        self.btn_exit.unbind("<Button-1>")
+        self.btn_exit.bind("<Button-1>", lambda e: self._exit_app())
+        self.btn_exit.pack(side=tk.BOTTOM, pady=(0,6), padx=4)
         self._attach_tooltip(self.btn_exit, "Beenden")
 
         # ─── Canvas-Bereich ────────────────────────────────────
