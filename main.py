@@ -164,6 +164,26 @@ class Line:
                 "color": self.color, "width": self.width}
 
 
+class Ellipse:
+    """Eine Ellipse auf dem PDF."""
+    def __init__(self, x1=0, y1=0, x2=0, y2=0, color="#4a90d9", fill=None, width=3):
+        self.x1, self.y1 = min(x1, x2), min(y1, y2)
+        self.x2, self.y2 = max(x1, x2), max(y1, y2)
+        self.color = color
+        self.fill = fill
+        self.width = width
+
+    def to_dict(self):
+        return {"x1": self.x1, "y1": self.y1,
+                "x2": self.x2, "y2": self.y2,
+                "color": self.color, "fill": self.fill,
+                "width": self.width}
+
+    def contains(self, px, py):
+        """Prüft ob Punkt (px,py) innerhalb der Ellipse liegt (vereinfacht als Bounding-Box)."""
+        return self.x1 <= px <= self.x2 and self.y1 <= py <= self.y2
+
+
 class App:
     def __init__(self, root):
         self.root = root
@@ -186,6 +206,7 @@ class App:
         self.arrows = {}  # dict: {"0": [Arrow, ...], "1": [...]}
         self.rects = {}   # dict: {"0": [Rect, ...], "1": [...]}
         self.lines = {}   # dict: {"0": [Line, ...], "1": [...]}
+        self.ellipses = {}   # dict: {"0": [Ellipse, ...], "1": [...]}
 
         # --- Undo-History ---
         self.undo_stack = {}  # {page_key: [snapshots]}
@@ -225,6 +246,8 @@ class App:
         self.tool_arrow_head_len = 25
         self.tool_rect_color = "#4a90d9"
         self.tool_rect_width = 3
+        self.tool_ellipse_color = "#4a90d9"
+        self.tool_ellipse_width = 3
         self._stempel_images = {}  # PIL-Images für PDF-Export
         self._stempel_tk = {}  # tkinter-PhotoImages für Canvas
 
@@ -399,7 +422,7 @@ class App:
             self._tool_buttons[name] = btn
             self._attach_tooltip(btn, tip)
             # Rechtsklick für Werkzeug-Einstellungen
-            if name in ("Linie", "Pfeil", "Rechteck"):
+            if name in ("Linie", "Pfeil", "Rechteck", "Ellipse"):
                 btn.bind("<Button-3>", lambda e, n=name: self._tool_settings_dialog(n))
 
         # Toolbox: Datum-Button unter den Werkzeugen
@@ -628,6 +651,7 @@ class App:
         self.arrows = {}
         self.rects = {}
         self.lines = {}
+        self.ellipses = {}
         self._stempel_images = {}
         self._stempel_tk = {}
         self.current_page = 0
@@ -853,6 +877,7 @@ class App:
             "arrows": [a.to_dict() for a in self._current_arrows()],
             "rects": [r.to_dict() for r in self._current_rects()],
             "lines": [ln.to_dict() for ln in self._current_lines()],
+            "ellipses": [el.to_dict() for el in self._current_ellipses()],
         }
         if key not in self.undo_stack:
             self.undo_stack[key] = []
@@ -878,6 +903,7 @@ class App:
         self.arrows[key_st] = [Arrow(**a) for a in snap["arrows"]]
         self.rects[key_st] = [Rect(**r) for r in snap["rects"]]
         self.lines[key_st] = [Line(**l) for l in snap["lines"]]
+        self.ellipses[key_st] = [Ellipse(**e) for e in snap["ellipses"]]
         self._render()
         self._status()
 
@@ -1173,6 +1199,13 @@ class App:
                 except Exception as e:
                     print(f"Linien-Fehler: {e}")
 
+            # Ellipsen zeichnen
+            for el in self._current_ellipses():
+                try:
+                    self._draw_ellipse(el)
+                except Exception as e:
+                    print(f"Ellipsen-Fehler: {e}")
+
             self.cv.create_text(cw-10,10, anchor=tk.NE, text=f"{self.zoom*100:.0f}%",
                                fill="white", font=("Arial",10))
         except Exception as e: print(f"Render: {e}")
@@ -1302,6 +1335,11 @@ class App:
             self._drag_mode = "rect"
             return
 
+        if self.selected_tool == "Ellipse":
+            self._ellipse_start = (int(px), int(py))
+            self._drag_mode = "ellipse"
+            return
+
         if self.selected_tool == "Linie":
             self._line_start = (int(px), int(py))
             self._drag_mode = "line"
@@ -1426,6 +1464,21 @@ class App:
             self.cv.create_rectangle(rx1, ry1, rx2, ry2,
                                      outline=C["accent"], width=2, dash=(4, 4), tags="drag")
 
+        elif dm == "ellipse":
+            px, py = self._ic(e)
+            x1, y1 = self._ellipse_start
+            if abs(px - x1) < 3 and abs(py - y1) < 3:
+                return
+            self.cv.delete("drag")
+            z = self.zoom
+            ox, oy = self.ox, self.oy
+            ex1 = ox + int(min(x1, px) * z)
+            ey1 = oy + int(min(y1, py) * z)
+            ex2 = ox + int(max(x1, px) * z)
+            ey2 = oy + int(max(y1, py) * z)
+            self.cv.create_oval(ex1, ey1, ex2, ey2,
+                                outline=C["accent"], width=2, dash=(4, 4), tags="drag")
+
         elif dm == "line":
             px, py = self._ic(e)
             x1, y1 = self._line_start
@@ -1500,6 +1553,19 @@ class App:
                 self.rects[key].append(Rect(x1=x1, y1=y1, x2=int(px), y2=int(py),
                                            color=self.tool_rect_color,
                                            width=self.tool_rect_width))
+                self._render()
+                self._status()
+        elif dm == "ellipse" and e:
+            px, py = self._ic(e)
+            x1, y1 = self._ellipse_start
+            if abs(px - x1) >= 8 or abs(py - y1) >= 8:
+                self._undo_snapshot()
+                key = str(self.current_page)
+                if key not in self.ellipses:
+                    self.ellipses[key] = []
+                self.ellipses[key].append(Ellipse(x1=x1, y1=y1, x2=int(px), y2=int(py),
+                                                  color=self.tool_ellipse_color,
+                                                  width=self.tool_ellipse_width))
                 self._render()
                 self._status()
         elif dm == "line" and e:
@@ -1616,6 +1682,15 @@ class App:
                     self._render()
                     self._status()
                 return
+        # Ellipse loeschen
+        for el in reversed(self._current_ellipses()):
+            if el.contains(px, py):
+                if messagebox.askyesno("Loeschen", "Diese Ellipse loeschen?"):
+                    self._undo_snapshot()
+                    self._current_ellipses().remove(el)
+                    self._render()
+                    self._status()
+                return
         # Nichts getroffen -> Panning
         self.panning = True
         self.pan_x, self.pan_y = e.x, e.y
@@ -1657,7 +1732,11 @@ class App:
 
         is_arrow = tool == "Pfeil"
         is_rect = tool == "Rechteck"
-        if is_rect:
+        is_ellipse = tool == "Ellipse"
+        if is_ellipse:
+            color_key = "tool_ellipse_color"
+            width_key = "tool_ellipse_width"
+        elif is_rect:
             color_key = "tool_rect_color"
             width_key = "tool_rect_width"
         elif is_arrow:
@@ -1863,6 +1942,13 @@ class App:
             except Exception as e:
                 print(f"Linien-PDF-Fehler: {e}")
 
+        # Ellipsen auf PDF malen
+        for el in self._current_ellipses():
+            try:
+                self._draw_ellipse_pdf(d, el)
+            except Exception as e:
+                print(f"Ellipsen-PDF-Fehler: {e}")
+
         tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
         img.save(tmp.name, "PDF", resolution=300)
         return tmp.name
@@ -1909,6 +1995,10 @@ class App:
     def _current_lines(self):
         """Gibt die Linien-Liste der aktuellen Seite zurück."""
         return self.lines.get(str(self.current_page), [])
+
+    def _current_ellipses(self):
+        """Gibt die Ellipsen-Liste der aktuellen Seite zurück."""
+        return self.ellipses.get(str(self.current_page), [])
 
     @staticmethod
     def _point_near_line(px, py, x1, y1, x2, y2, tol=15.0):
@@ -1974,6 +2064,22 @@ class App:
         pw = max(1, ln.width)
         d.line([(ln.x1, ln.y1), (ln.x2, ln.y2)],
                fill=ln.color, width=pw)
+
+    def _draw_ellipse(self, el):
+        """Zeichnet eine Ellipse auf dem Canvas."""
+        z, ox, oy = self.zoom, self.ox, self.oy
+        x1 = ox + int(el.x1 * z)
+        y1 = oy + int(el.y1 * z)
+        x2 = ox + int(el.x2 * z)
+        y2 = oy + int(el.y2 * z)
+        line_w = max(1, int(el.width * z))
+        self.cv.create_oval(x1, y1, x2, y2,
+                           outline=el.color, fill=el.fill or "", width=line_w, tags="f")
+
+    def _draw_ellipse_pdf(self, d, el):
+        """Malt eine Ellipse auf das 300-DPI-PDF-Bild (ImageDraw)."""
+        d.ellipse([(el.x1, el.y1), (el.x2, el.y2)],
+                  outline=el.color, fill=el.fill, width=max(1, el.width))
 
     def _draw_arrow(self, a):
         """Zeichnet einen Pfeil auf dem Canvas — auf Seitenbereich begrenzt."""
