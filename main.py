@@ -71,6 +71,7 @@ class FieldRect:
     def __init__(self, x1=0, y1=0, x2=0, y2=0, label="", ftype="text"):
         self.x1, self.y1, self.x2, self.y2 = x1, y1, x2, y2
         self.label, self.type, self.value, self.group = label, ftype, "", ""
+        self.font_size = 11  # Schriftgröße in Punkt — pro Feld speicherbar
     @property
     def w(self): return self.x2 - self.x1
     @property
@@ -78,7 +79,8 @@ class FieldRect:
     def contains(self, px, py): return self.x1 <= px <= self.x2 and self.y1 <= py <= self.y2
     def to_dict(self):
         return {"label": self.label, "type": self.type, "x": self.x1,
-                "y": self.y1, "w": self.w, "h": self.h, "group": self.group}
+                "y": self.y1, "w": self.w, "h": self.h, "group": self.group,
+                "font_size": self.font_size}
     @classmethod
     def from_dict(cls, d):
         pos = d.get("pos", d)
@@ -86,8 +88,10 @@ class FieldRect:
         y = pos.get("y", pos.get("y1", 0))
         w = pos.get("w", 100)
         h = pos.get("h", d.get("h", 20))
-        return cls(x1=x, y1=y, x2=x+w, y2=y+h,
+        obj = cls(x1=x, y1=y, x2=x+w, y2=y+h,
                    label=d.get("label", d.get("name", "")), ftype="text" if d.get("type") == "radio" else d.get("type", "text"))
+        obj.font_size = d.get("font_size", 11)
+        return obj
 
 
 class Stamp:
@@ -1265,9 +1269,9 @@ class App:
                                fill="#89b4fa" if self.mode=="edit" else "#64ff64",
                                font=("Segoe UI",fs), tags="f")
 
-        # Wert anzeigen — Schrift aus Einstellung
+        # Wert anzeigen — Schrift aus Einstellung / Feld-eigen
         if f.value and f.type == "text":
-            pt = max(6, min(36, self.font_size))
+            pt = max(6, min(36, getattr(f, 'font_size', self.font_size) or self.font_size))
             fs = max(8, int(pt * SCALE * z * 0.8))
             txt = str(f.value)
             fc = self.font_color if self.font_color else "#000000"
@@ -2004,8 +2008,8 @@ class App:
 
         for f in self._current_fields():
             if f.type == "text" and f.value:
-                # Schrift in Punkt — aus Einstellung
-                pt = max(6, min(36, self.font_size))
+                # Schrift in Punkt — aus Feld-Einstellung (sonst global)
+                pt = max(6, min(36, getattr(f, 'font_size', self.font_size) or self.font_size))
                 font = get_font(pt, self.font_name)
                 fill_color = self.font_color if self.font_color else "#000000"
                 # PIL-Offset: bbox[1] ist negativ — Abstand von draw_y bis Oberkante
