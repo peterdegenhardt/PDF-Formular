@@ -370,6 +370,16 @@ class App:
             self._tool_buttons[name] = btn
             self._attach_tooltip(btn, tip)
 
+        # Toolbox: Datum-Button unter den Werkzeugen
+        self.btn_date = tk.Button(self.toolbox, text="📅", font=("Segoe UI",14),
+                                bg=C["bg"], fg=C["text"],
+                                activebackground=C["accent"], activeforeground="#11111b",
+                                relief=tk.FLAT, bd=1, pady=4, padx=2,
+                                cursor="hand2", width=3,
+                                command=self._insert_date)
+        self.btn_date.pack(pady=(10,1), padx=2, fill=tk.X)
+        self._attach_tooltip(self.btn_date, "Aktuelles Datum einfügen (TT.MM.JJJJ)")
+
         # Toolbox: Beenden-Button ganz unten
         self.toolbox_padding = tk.Frame(self.toolbox, bg=C["bg"])
         self.toolbox_padding.pack(fill=tk.BOTH, expand=True)
@@ -1177,6 +1187,21 @@ class App:
                                font=("Segoe UI",sz,"bold"), tags="f")
 
     # ─── Maus ─────────────────────────────────────────────────
+    def _insert_date(self):
+        """Fuegt heutiges Datum (TT.MM.JJJJ) in das aktive Textfeld ein."""
+        if self.mode != "fill":
+            self._status_text("Datum nur im Ausfuell-Modus")
+            return
+        if not self.active_field or self.active_field.type != "text":
+            self._status_text("Kein aktives Textfeld — bitte zuerst Feld anklicken")
+            return
+        from datetime import date
+        today = date.today().strftime("%d.%m.%Y")
+        self._undo_snapshot()
+        self.active_field.value = (str(self.active_field.value) if self.active_field.value else "") + today
+        self._render()
+        self._status()
+
     def _ic(self, e): return (e.x - self.ox)/self.zoom, (e.y - self.oy)/self.zoom
 
     def _find(self, px, py):
