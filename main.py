@@ -445,8 +445,30 @@ class App:
         for child in self._tb_children:
             if isinstance(child, tk.Button) and child.cget("text") in TOOLTIPS:
                 self._attach_tooltip(child, TOOLTIPS[child.cget("text")])
+        # ─── Icons aus icons/-Ordner laden ────────────────────
+        def _icon_path(name):
+            """Sucht icons/<name>.png im Projekt- oder EXE-Verzeichnis."""
+            base = os.path.dirname(os.path.abspath(sys.argv[0]))
+            p = os.path.join(base, "icons", f"{name}.png")
+            if os.path.exists(p): return p
+            # Fallback: Skript-Verzeichnis (für python main.py)
+            if hasattr(sys, '_MEIPASS'):  # PyInstaller
+                p = os.path.join(sys._MEIPASS, "icons", f"{name}.png")
+                if os.path.exists(p): return p
+            p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", f"{name}.png")
+            if os.path.exists(p): return p
+            return None
+
+        self._icons_png = {}
+        for iname in ("pfeil", "linie", "rechteck", "ellipse", "maske", "bild", "stempel", "datum"):
+            path = _icon_path(iname)
+            if path:
+                self._icons_png[iname] = tk.PhotoImage(file=path)
+            else:
+                print(f"Icon fehlt: {iname}.png in icons/")
+
         # ─── Toolbox links ─────────────────────────────────────
-        self.toolbox = tk.Frame(self.root, bg=C["bg"], width=60)
+        self.toolbox = tk.Frame(self.root, bg=C["bg"], width=48)
         self.toolbox.pack(side=tk.LEFT, fill=tk.Y, padx=(4,0), pady=4)
         self.toolbox.pack_propagate(False)
 
@@ -454,46 +476,57 @@ class App:
         self.toolbox_inner.pack(fill=tk.X)
 
         werkzeuge = [
-            ("⬆\ufe0f", "Pfeil", "Auswahl (Default)"),
-            ("╱", "Linie", "Linie zeichnen"),
-            ("▭", "Rechteck", "Rechteck zeichnen"),
-            ("◯", "Ellipse", "Kreis/Ellipse zeichnen"),
-            ("▣", "Maske", "Bereich maskieren"),
-            ("🖼\ufe0f", "Bild", "Bild einfügen"),
-            ("🕹\ufe0f", "Stempel", "Stempel aufdrücken"),
+            ("pfeil", "Pfeil", "Auswahl (Default)"),
+            ("linie", "Linie", "Linie zeichnen"),
+            ("rechteck", "Rechteck", "Rechteck zeichnen"),
+            ("ellipse", "Ellipse", "Kreis/Ellipse zeichnen"),
+            ("maske", "Maske", "Bereich maskieren"),
+            ("bild", "Bild", "Bild einfügen"),
+            ("stempel", "Stempel", "Stempel aufdrücken"),
         ]
 
-        def _tool_btn_cmd(n):
-            return lambda: self._set_tool(n)
-
         self._tool_buttons = {}
-        for icon, name, tip in werkzeuge:
-            btn = tk.Button(self.toolbox_inner, text=icon, font=("Segoe UI",16),
-                          bg=C["bg"], fg=C["text"],
-                          activebackground="#89b4fa", activeforeground="#11111b",
-                          relief=tk.RAISED, bd=2, pady=6, padx=0,
+        for ikey, name, tip in werkzeuge:
+            img = self._icons_png.get(ikey)
+            btn = tk.Button(self.toolbox_inner, image=img if img else "",
+                          bg=C["bg"],
+                          activebackground="#89b4fa",
+                          relief=tk.RAISED, bd=2, pady=4, padx=2,
                           cursor="hand2",
-                          command=_tool_btn_cmd(name))
+                          command=lambda n=name: self._set_tool(n))
             btn.pack(pady=(0,2), fill=tk.X, padx=2)
             self._tool_buttons[name] = btn
             self._attach_tooltip(btn, tip)
-            # Rechtsklick
+            # Hover per Event-Binding
+            def on_enter(e, b=btn):
+                if b.cget("bg") != C["accent"]: b.configure(bg="#89b4fa")
+            def on_leave(e, b=btn):
+                if b.cget("bg") != C["accent"]: b.configure(bg=C["bg"])
+            btn.bind("<Enter>", on_enter)
+            btn.bind("<Leave>", on_leave)
             if name in ("Linie", "Pfeil", "Rechteck", "Ellipse", "Maske"):
                 btn.bind("<Button-3>", lambda e, n=name: self._tool_settings_dialog(n))
 
-        self.btn_date = tk.Button(self.toolbox_inner, text="📅", font=("Segoe UI",16),
-                                bg=C["bg"], fg=C["text"],
-                                activebackground="#89b4fa", activeforeground="#11111b",
-                                relief=tk.RAISED, bd=2, pady=6, padx=0,
+        img_datum = self._icons_png.get("datum")
+        self.btn_date = tk.Button(self.toolbox_inner, image=img_datum if img_datum else "",
+                                bg=C["bg"],
+                                activebackground="#89b4fa",
+                                relief=tk.RAISED, bd=2, pady=4, padx=2,
                                 cursor="hand2",
                                 command=self._insert_date)
         self.btn_date.pack(pady=(8,2), fill=tk.X, padx=2)
         self._attach_tooltip(self.btn_date, "Aktuelles Datum einfügen (TT.MM.JJJJ)")
+        def dt_enter(e):
+            if self.btn_date.cget("bg") != C["accent"]: self.btn_date.configure(bg="#89b4fa")
+        def dt_leave(e):
+            if self.btn_date.cget("bg") != C["accent"]: self.btn_date.configure(bg=C["bg"])
+        self.btn_date.bind("<Enter>", dt_enter)
+        self.btn_date.bind("<Leave>", dt_leave)
 
         self.toolbox_filler = tk.Frame(self.toolbox_inner, bg=C["bg"])
         self.toolbox_filler.pack(fill=tk.BOTH, expand=True)
 
-        self.btn_exit = tk.Button(self.toolbox, text="❌", font=("Segoe UI",16),
+        self.btn_exit = tk.Button(self.toolbox, text="❌", font=("Segoe UI",14),
                                 bg=C["red"], fg="#11111b",
                                 activebackground="#c0392b", activeforeground="#11111b",
                                 relief=tk.RAISED, bd=2, pady=6, padx=0,
