@@ -450,17 +450,6 @@ class App:
         self.toolbox.pack(side=tk.LEFT, fill=tk.Y, padx=(4,0), pady=4)
         self.toolbox.pack_propagate(False)
 
-        # ttk-Style für Tool-Buttons
-        style = ttk.Style()
-        style.theme_use("clam")
-        style.configure("Tool.TButton", font=("Segoe UI",13), padding=(4,4),
-                       background=C["bg"], foreground=C["text"],
-                       bordercolor=C["bg"], lightcolor=C["bg"],
-                       darkcolor=C["bg"], relief="flat")
-        style.map("Tool.TButton",
-                  background=[("active", "#e0e0e0"), ("pressed", C["accent"])],
-                  foreground=[("active", C["text"]), ("pressed", "#11111b")])
-
         werkzeuge = [
             ("⬆️", "Pfeil", "Auswahl (Default)"),
             ("╱", "Linie", "Linie zeichnen"),
@@ -471,10 +460,17 @@ class App:
             ("🕹️", "Stempel", "Stempel aufdrücken"),
         ]
 
+        def _tool_btn_cmd(n):
+            return lambda: self._set_tool(n)
+
         self._tool_buttons = {}
         for icon, name, tip in werkzeuge:
-            btn = ttk.Button(self.toolbox, text=icon, style="Tool.TButton",
-                           command=lambda n=name: self._set_tool(n))
+            btn = tk.Button(self.toolbox, text=icon, font=("Segoe UI",12),
+                          bg=C["bg"], fg=C["text"],
+                          activebackground=C["accent"], activeforeground="#11111b",
+                          relief=tk.RAISED, bd=2, pady=3, padx=1,
+                          cursor="hand2", width=3,
+                          command=_tool_btn_cmd(name))
             btn.pack(pady=(0,2), padx=4, fill=tk.X)
             self._tool_buttons[name] = btn
             self._attach_tooltip(btn, tip)
@@ -483,28 +479,24 @@ class App:
                 btn.bind("<Button-3>", lambda e, n=name: self._tool_settings_dialog(n))
 
         # Toolbox: Datum-Button unter den Werkzeugen
-        style.configure("Date.TButton", font=("Segoe UI",13), padding=(4,4),
-                       background=C["bg"], foreground=C["text"],
-                       bordercolor=C["bg"], relief="flat")
-        style.map("Date.TButton",
-                  background=[("active", "#e0e0e0"), ("pressed", C["accent"])],
-                  foreground=[("active", C["text"]), ("pressed", "#11111b")])
-        self.btn_date = ttk.Button(self.toolbox, text="📅", style="Date.TButton",
-                                  command=self._insert_date)
+        self.btn_date = tk.Button(self.toolbox, text="📅", font=("Segoe UI",12),
+                                bg=C["bg"], fg=C["text"],
+                                activebackground=C["accent"], activeforeground="#11111b",
+                                relief=tk.RAISED, bd=2, pady=3, padx=1,
+                                cursor="hand2", width=3,
+                                command=self._insert_date)
         self.btn_date.pack(pady=(8,2), padx=4, fill=tk.X)
         self._attach_tooltip(self.btn_date, "Aktuelles Datum einfügen (TT.MM.JJJJ)")
 
         # Toolbox: Beenden-Button ganz unten
-        style.configure("Exit.TButton", font=("Segoe UI",13), padding=(4,4),
-                       background=C["red"], foreground="#11111b",
-                       bordercolor=C["red"], relief="flat")
-        style.map("Exit.TButton",
-                  background=[("active", "#c0392b")],
-                  foreground=[("active", "#11111b")])
         self.toolbox_padding = tk.Frame(self.toolbox, bg=C["bg"])
         self.toolbox_padding.pack(fill=tk.BOTH, expand=True)
-        self.btn_exit = ttk.Button(self.toolbox, text="❌", style="Exit.TButton",
-                                  command=self._exit_app)
+        self.btn_exit = tk.Button(self.toolbox, text="❌", font=("Segoe UI",12),
+                                bg=C["red"], fg="#11111b",
+                                activebackground=C["red"], activeforeground="#11111b",
+                                relief=tk.RAISED, bd=2, pady=3, padx=1,
+                                cursor="hand2", width=3,
+                                command=self._exit_app)
         self.btn_exit.pack(side=tk.BOTTOM, pady=(0,6), padx=4)
         self._attach_tooltip(self.btn_exit, "Beenden")
 
@@ -547,13 +539,12 @@ class App:
     def _set_tool(self, name):
         """Wählt ein Werkzeug aus der Toolbox."""
         self.selected_tool = name
-        # Buttons visuell hervorheben — ttk-Style via state
+        # Buttons visuell hervorheben
         for n, btn in self._tool_buttons.items():
             if n == name:
-                btn.state(["pressed"])
-                btn.state(["!active"])
+                btn.configure(bg=C["accent"], fg="#11111b", relief=tk.RAISED)
             else:
-                btn.state(["!pressed"])
+                btn.configure(bg=C["bg"], fg=C["text"], relief=tk.RAISED)
         self._status()
 
     def _set_height_dialog(self):
@@ -813,10 +804,9 @@ class App:
                 self.toolbox_padding.configure(bg=C["bg"])
                 for n, btn in self._tool_buttons.items():
                     if n == self.selected_tool:
-                        btn.state(["pressed"])
-                        btn.state(["!active"])
+                        btn.configure(bg=C["accent"], fg="#11111b", relief=tk.RAISED)
                     else:
-                        btn.state(["!pressed"])
+                        btn.configure(bg=C["bg"], fg=C["text"], relief=tk.RAISED)
             # Page-Label einfärben
             if hasattr(self, 'page_label'):
                 self.page_label.configure(bg=C["bg"], fg=C["text"])
@@ -980,7 +970,7 @@ class App:
         if self.selected_tool:
             self.selected_tool = None
             for n, btn in self._tool_buttons.items():
-                btn.state(["!pressed"])
+                btn.configure(bg=C["bg"], fg=C["text"], relief=tk.RAISED)
             self._status()
 
     def _set_mode(self, mode):
@@ -989,7 +979,7 @@ class App:
         # Werkzeug-Modus beim Modus-Wechsel zurücksetzen
         self.selected_tool = None
         for n, btn in self._tool_buttons.items():
-            btn.state(["!pressed"])
+            btn.configure(bg=C["bg"], fg=C["text"], relief=tk.RAISED)
         if mode == "fill":
             self.btn_fill.configure(bg=C["accent"], fg="#11111b")
             self.btn_edit.configure(bg=C["status"], fg=C["dim"])
