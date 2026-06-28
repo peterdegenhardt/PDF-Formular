@@ -1162,16 +1162,12 @@ class App:
             self.cv.create_text(x1+3, y_base, anchor=tk.SW, text=txt, fill=fc,
                                font=(fn,fs), tags="f")
 
-        # Checkbox/Radio
+        # Checkbox
         if f.type == "checkbox" and f.value in (True,"True","true","1"):
             cx, cy = (x1+x2)//2, (y1+y2)//2
             sz = max(6, int((y2 - y1) * 0.8))
             self.cv.create_text(cx, cy, text="✓", fill="#000",
                                font=("Segoe UI",sz,"bold"), tags="f")
-        if f.type == "radio" and f.value in (True,"True","true","1"):
-            cx, cy = (x1+x2)//2, (y1+y2)//2
-            r = max(2, int(self.font_size * z * 0.4))
-            self.cv.create_oval(cx-r, cy-r, cx+r, cy+r, fill="#000", tags="f")
 
     # ─── Maus ─────────────────────────────────────────────────
     def _ic(self, e): return (e.x - self.ox)/self.zoom, (e.y - self.oy)/self.zoom
@@ -1247,14 +1243,6 @@ class App:
                 elif f.type == "checkbox":
                     self._undo_snapshot()
                     f.value = not (f.value in (True, "True", "true", "1"))
-                    self._render()
-                    self._status()
-                elif f.type == "radio":
-                    self._undo_snapshot()
-                    for o in self._current_fields():
-                        if o.type == "radio" and o.group == f.group:
-                            o.value = False
-                    f.value = True
                     self._render()
                     self._status()
             else:
@@ -1558,32 +1546,12 @@ class App:
         type_var = tk.StringVar(value="text")
         type_frame = tk.Frame(win, bg=C["bg"])
         type_frame.pack(pady=(0,4))
-        for t_val, t_label in [("text", "📝 Text"), ("checkbox", "☑ Checkbox"), ("radio", "◉ Radio")]:
+        for t_val, t_label in [("text", "📝 Text"), ("checkbox", "☑ Checkbox")]:
             tk.Radiobutton(type_frame, text=t_label, variable=type_var, value=t_val,
                           bg=C["bg"], fg=C["text"], selectcolor=C["canvas"],
                           activebackground=C["bg"], activeforeground=C["accent"],
                           font=("Segoe UI",10)).pack(side=tk.LEFT, padx=6)
-        
-        # Gruppenname (nur für radio)
-        group_frame = tk.Frame(win, bg=C["bg"])
-        group_lbl = tk.Label(group_frame, text="Gruppe:", bg=C["bg"], fg=C["text"],
-                             font=("Segoe UI",10))
-        group_lbl.pack(side=tk.LEFT, padx=(20,4))
-        group_var = tk.StringVar(value="gruppe1")
-        group_et = tk.Entry(group_frame, textvariable=group_var, bg=C["canvas"], fg=C["text"],
-                            font=("Segoe UI",11), insertbackground=C["text"],
-                            relief=tk.FLAT, bd=4)
-        group_et.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0,20))
-        group_frame.pack(fill=tk.X, pady=(0,8))
-        group_frame.pack_forget()  # erstmal versteckt
-        
-        def on_type_change(*args):
-            if type_var.get() == "radio":
-                group_frame.pack(fill=tk.X, pady=(0,8), before=btn_frame)
-            else:
-                group_frame.pack_forget()
-        type_var.trace_add("write", on_type_change)
-        
+
         def on_ok():
             n = name_var.get().strip()
             if not n:
@@ -1591,7 +1559,7 @@ class App:
                 return
             result["name"] = n
             result["type"] = type_var.get()
-            result["group"] = group_var.get().strip() if type_var.get() == "radio" else ""
+            result["group"] = ""
             win.destroy()
         
         def on_cancel():
@@ -1618,10 +1586,8 @@ class App:
         if not self.pdf_image: raise ValueError("Kein PDF")
         img = self.pdf_image.copy()
         d = ImageDraw.Draw(img)
-        print(f"_build_pdf: {len(self._current_fields())} felder")
 
         for f in self._current_fields():
-            print(f"  feld: label={f.label}, type={f.type}, value={f.value}")
             if f.type == "text" and f.value:
                 # Schrift in Punkt — aus Einstellung
                 pt = max(6, min(36, self.font_size))
@@ -1643,8 +1609,6 @@ class App:
                 # ✓ aus zwei Linien: unten-links → mitte → oben-rechts
                 d.line([(cx - s*2, cy), (cx - s*0.5, cy + s*1.5), (cx + s*2, cy - s*1.5)],
                        fill=(0,0,0), width=max(2, int(s*0.6)))
-            elif f.type == "radio" and f.value in (True,"True","true","1"):
-                d.ellipse([f.x1+4,f.y1+4,f.x1+11,f.y1+11], fill=(0,0,0))
 
         # Stempel auf PDF malen
         for s in self._current_stamps():
