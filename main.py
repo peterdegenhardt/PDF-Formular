@@ -165,6 +165,12 @@ class App:
         self.stamps = {}  # dict: {"0": [Stamp, ...], "1": [...]}
         self.arrows = {}  # dict: {"0": [Arrow, ...], "1": [...]}
         self.rects = {}   # dict: {"0": [Rect, ...], "1": [...]}
+
+        # --- Undo-History ---
+        self.undo_stack = {}  # {page_key: [snapshots]}
+        self.undo_max = 50     # Tiefe des Undo-Stacks
+        self._undo_snapshot()  # initialen Zustand sichern
+
         self.selected = None
         self.template_path = self.template_name = None
         self.project_path = self.project_name = None
@@ -404,7 +410,9 @@ class App:
         self.cv.bind("<B3-Motion>", self._right_drag)
         self.cv.bind("<ButtonRelease-3>", self._right_release)
         self.cv.bind("<Key>", self._key)
-        self.root.bind("<Escape>", lambda e: self._stop_typing())
+        self.root.bind("<Escape>", self._key_escape)
+        self.root.bind("<Control-z>", self._undo)
+        self.root.bind("<Control-Z>", self._undo)
         # Popup-Menüs bei Klick irgendwo schließen
         self.root.bind("<Button-1>", self._close_menus, add="+")
         self.root.bind("<Button-3>", self._close_menus, add="+")
@@ -427,11 +435,10 @@ class App:
             initialvalue=self.frame_height, minvalue=10, maxvalue=500,
             parent=self.root)
         if val is not None:
-            old_h = self.frame_height
+            self._undo_snapshot()
             self.frame_height = val
-            # Änderungsdelta für jedes Feld: Oberkante wandert nach oben/unten
             for f in self._current_fields():
-                f.y1 = f.y2 - self.frame_height  # wächst nach oben
+                f.y1 = f.y2 - self.frame_height
             self._render()
             self._status()
 
@@ -453,6 +460,9 @@ class App:
         """Wechselt zu einer bestimmten Seite."""
         if not self.pdf_path or page < 0 or page >= self.page_count:
             return
+        # Aktuelle Seite vor dem Wechsel sichern
+        if self.pdf_image:
+            self._undo_snapshot()
         if self.dragging:
             self._release_b1(None)
         self._stop_typing()
@@ -788,9 +798,59 @@ class App:
         self._render()
         self._status()
 
+    def _undo_snapshot(self):
+        """Aktuellen Zustand für Undo sichern."""
+        if not self.pdf_image:
+            return
+        key = str(self.current_page)
+        snap = {
+            "fields": [f.to_dict() for f in self._current_fields()],
+            "stamps": [s.to_dict() for s in self._current_stamps()],
+            "arrows": [a.to_dict() for a in self._current_arrows()],
+            "rects": [r.to_dict() for r in self._current_rects()],
+        }
+        if key not in self.undo_stack:
+            self.undo_stack[key] = []
+        self.undo_stack[key].append(snap)
+        if len(self.undo_stack[key]) > self.undo_max:
+            self.undo_stack[key].pop(0)
+
+    def _undo(self, event=None):
+        """Strg+Z: letzten Zustand wiederherstellen."""
+        key = str(self.current_page)
+        stack = self.undo_stack.get(key, [])
+        if len(stack) < 2:
+            self._status_text("Nichts rückgängig zu machen")
+            return
+        stack.pop()
+        snap = stack[-1]
+        current_fields = self._current_fields()
+        current_fields.clear()
+        for d in snap["fields"]:
+            current_fields.append(FieldRect.from_dict(d))
+        key_st = str(self.current_page)
+        self.stamps[key_st] = [Stamp(**s) for s in snap["stamps"]]
+        self.arrows[key_st] = [Arrow(**a) for a in snap["arrows"]]
+        self.rects[key_st] = [Rect(**r) for r in snap["rects"]]
+        self._render()
+        self._status()
+
+    def _key_escape(self, event=None):
+        """Escape: Werkzeug-Modus zurücksetzen + Tippen beenden."""
+        self._stop_typing()
+        if self.selected_tool:
+            self.selected_tool = None
+            for n, btn in self._tool_buttons.items():
+                btn.configure(bg=C["bg"], fg=C["text"], relief=tk.FLAT)
+            self._status()
+
     def _set_mode(self, mode):
         self._stop_typing()
         self.mode = mode
+        # Werkzeug-Modus beim Modus-Wechsel zurücksetzen
+        self.selected_tool = None
+        for n, btn in self._tool_buttons.items():
+            btn.configure(bg=C["bg"], fg=C["text"], relief=tk.FLAT)
         if mode == "fill":
             self.btn_fill.configure(bg=C["accent"], fg="#11111b")
             self.btn_edit.configure(bg=C["status"], fg=C["dim"])
@@ -1156,7 +1216,9 @@ class App:
         if self.selected_tool == "Stempel":
             self._stempel_dialog(int(px), int(py))
             self.selected_tool = None
-            self._set_tool("Pfeil")  # zurück zu Pfeil
+            for n, btn in self._tool_buttons.items():
+                btn.configure(bg=C["bg"], fg=C["text"], relief=tk.FLAT)
+            self._status()
             return
 
         if self.selected_tool == "Pfeil":
@@ -1183,10 +1245,12 @@ class App:
                     self._render()
                     self._status()
                 elif f.type == "checkbox":
+                    self._undo_snapshot()
                     f.value = not (f.value in (True, "True", "true", "1"))
                     self._render()
                     self._status()
                 elif f.type == "radio":
+                    self._undo_snapshot()
                     for o in self._current_fields():
                         if o.type == "radio" and o.group == f.group:
                             o.value = False
@@ -1317,6 +1381,7 @@ class App:
             )
             result = self._field_dialog(f)
             if result:
+                self._undo_snapshot()
                 f.label, f.type, f.group = result
                 self._current_fields().append(f)
                 self.selected = f
@@ -1324,6 +1389,7 @@ class App:
                 self._status()
         elif dm == "move":
             if hasattr(self, '_mv_field') and self._mv_field:
+                self._undo_snapshot()
                 self._mv_field = None
                 self._render()
                 self._status()
@@ -1331,6 +1397,7 @@ class App:
             px, py = self._ic(e)
             x1, y1 = self._arrow_start
             if abs(px - x1) >= 8 or abs(py - y1) >= 8:
+                self._undo_snapshot()
                 key = str(self.current_page)
                 if key not in self.arrows:
                     self.arrows[key] = []
@@ -1341,6 +1408,7 @@ class App:
             px, py = self._ic(e)
             x1, y1 = self._rect_start
             if abs(px - x1) >= 8 or abs(py - y1) >= 8:
+                self._undo_snapshot()
                 key = str(self.current_page)
                 if key not in self.rects:
                     self.rects[key] = []
@@ -1394,22 +1462,52 @@ class App:
             self._status()
 
     def _right(self, e):
-        """Rechtsklick: Löschen (Edit auf Feld) oder Panning starten"""
+        """Rechtsklick: Loeschen von Feld/Pfeil/Stempel/Rechteck oder Panning."""
         if self.panning:
             return
         px, py = self._ic(e)
+        # Feld loeschen (nur Edit-Modus)
         f = self._find(px, py)
-        if self.mode == "edit" and f:
-            if messagebox.askyesno("Löschen", f"'{f.label}' löschen?"):
+        if f and self.mode == "edit":
+            if messagebox.askyesno("Loeschen", f"Feld '{f.label}' loeschen?"):
+                self._undo_snapshot()
                 self._current_fields().remove(f)
                 if self.selected == f:
                     self.selected = None
                 self._render()
                 self._status()
-        else:
-            self.panning = True
-            self.pan_x, self.pan_y = e.x, e.y
-            self.cv.configure(cursor="fleur")
+            return
+        # Pfeil loeschen (alle Modi) - Toleranz 20 Pixel
+        for a in reversed(self._current_arrows()):
+            if self._point_near_line(px, py, a.x1, a.y1, a.x2, a.y2, tol=20):
+                if messagebox.askyesno("Loeschen", "Diesen Pfeil loeschen?"):
+                    self._undo_snapshot()
+                    self._current_arrows().remove(a)
+                    self._render()
+                    self._status()
+                return
+        # Stempel loeschen
+        for s in reversed(self._current_stamps()):
+            if s.contains(px, py):
+                if messagebox.askyesno("Loeschen", f"Stempel '{s.text}' loeschen?"):
+                    self._undo_snapshot()
+                    self._current_stamps().remove(s)
+                    self._render()
+                    self._status()
+                return
+        # Rechteck loeschen
+        for r in reversed(self._current_rects()):
+            if r.x1 <= px <= r.x2 and r.y1 <= py <= r.y2:
+                if messagebox.askyesno("Loeschen", "Dieses Rechteck loeschen?"):
+                    self._undo_snapshot()
+                    self._current_rects().remove(r)
+                    self._render()
+                    self._status()
+                return
+        # Nichts getroffen -> Panning
+        self.panning = True
+        self.pan_x, self.pan_y = e.x, e.y
+        self.cv.configure(cursor="fleur")
 
     def _right_drag(self, e):
         """Rechtsklick ziehen: Panning"""
@@ -1603,6 +1701,7 @@ class App:
 
     def _reset(self):
         self._stop_typing()
+        self._undo_snapshot()
         for f in self._current_fields(): f.value = ""
         self._render(); self._status()
 
@@ -1619,6 +1718,18 @@ class App:
     def _current_rects(self):
         """Gibt die Rechteck-Liste der aktuellen Seite zurück."""
         return self.rects.get(str(self.current_page), [])
+
+    @staticmethod
+    def _point_near_line(px, py, x1, y1, x2, y2, tol=15):
+        """Prueft ob Punkt (px,py) nah an der Strecke (x1,y1)->(x2,y2) liegt."""
+        import math
+        dx, dy = x2 - x1, y2 - y1
+        if abs(dx) < 0.5 and abs(dy) < 0.5:
+            return math.hypot(px - x1, py - y1) <= tol
+        t = max(0, min(1, ((px - x1) * dx + (py - y1) * dy) / (dx*dx + dy*dy)))
+        nx = x1 + t * dx
+        ny = y1 + t * dy
+        return math.hypot(px - nx, py - ny) <= tol
 
     def _draw_rect(self, r):
         """Zeichnet ein Rechteck auf dem Canvas."""
@@ -1792,6 +1903,7 @@ class App:
         frame.pack(padx=12, fill=tk.BOTH, expand=True)
 
         def platziere(text, color):
+            self._undo_snapshot()
             key = str(self.current_page)
             if key not in self.stamps:
                 self.stamps[key] = []
@@ -1829,6 +1941,11 @@ class App:
             return "🖱️ Linke Taste: Text eingeben oder Häkchen setzen | Rechte Taste: Bild verschieben | Mausrad: Zoom"
         else:  # edit
             return "🖱️ Links: Feld anlegen | Strg+Klick: Feld verschieben | Mitte: Feld verschieben | Rechts: Bild verschieben | Rad: Zoom | Rechts auf Feld: Löschen"
+
+    def _status_text(self, msg):
+        """Kurztext in die Statusleiste (überschreibt sich nach 3s)."""
+        self.sb.config(text=msg)
+        self.root.after(3000, self._status)
 
     def _status(self):
         pdf = os.path.basename(self.pdf_path) if self.pdf_path else "Kein PDF"
