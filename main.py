@@ -1211,7 +1211,6 @@ class App:
         self._drag_mode = None  # noch kein Modus
         self.cv.delete("drag")
         px, py = self._ic(e)
-        print(f"CLICK: mode={self.mode}, tool={self.selected_tool}, pos=({px:.0f},{py:.0f})")
 
         # Werkzeug aus Toolbox?
         if self.selected_tool == "Stempel":
@@ -1239,7 +1238,6 @@ class App:
         elif self.mode == "fill":
             f = self._find(px, py)
             if f:
-                print(f"  GEFUNDEN: label='{f.label}', type={f.type}, value={f.value}")
                 if f.type == "text":
                     self.active_field = f
                     self.typing = True
@@ -1247,10 +1245,8 @@ class App:
                     self._render()
                     self._status()
                 elif f.type == "checkbox":
-                    print(f"  CHECKBOX: value vorher={f.value}")
                     self._undo_snapshot()
                     f.value = not (f.value in (True, "True", "true", "1"))
-                    print(f"  CHECKBOX: value nachher={f.value}")
                     self._render()
                     self._status()
                 elif f.type == "radio":
@@ -1262,7 +1258,6 @@ class App:
                     self._render()
                     self._status()
             else:
-                print("  NICHTS GEFUNDEN")
                 self._drag_mode = "pan"
                 self.pan_x, self.pan_y = e.x, e.y
                 self.cv.configure(cursor="fleur")
@@ -1638,17 +1633,24 @@ class App:
                 draw_y = f.y2 - text_h - 1 - pil_offset
                 d.text((f.x1 + 2, draw_y), str(f.value), fill=fill_color, font=font)
             elif f.type == "checkbox" and f.value in (True,"True","true","1"):
-                # ✓-Haken per Schrift — robust und skaliert mit der Feldgröße
+                # ✓-Haken zentriert im Feld
                 try:
-                    ck_font = get_font(min(18, max(8, (f.y2 - f.y1) * 0.7)), self.font_name)
+                    ck_size = min(18, max(8, (f.y2 - f.y1) * 0.7))
+                    ck_font = get_font(ck_size, self.font_name)
+                    if ck_font is None:
+                        ck_font = get_font(ck_size)
                     cx, cy = (f.x1 + f.x2) // 2, (f.y1 + f.y2) // 2
-                    ref = ck_font.getbbox("✓")
-                    ck_h = ref[3] - ref[1]
-                    d.text((cx, cy - ck_h//2 - ref[1]), "✓", fill=(0,0,0), font=ck_font)
+                    bbox = ck_font.getbbox("✓")
+                    ck_w = bbox[2] - bbox[0]
+                    ck_h = bbox[3] - bbox[1]
+                    dx = cx - ck_w // 2
+                    dy = cy - ck_h // 2 - bbox[1]
+                    d.text((dx, dy), "✓", fill=(0,0,0), font=ck_font)
                 except Exception:
-                    # Fallback: manuelle Linien als Notlösung
-                    for i in range(2):
-                        d.line([(f.x1+2,f.y1+8+i),(f.x1+6,f.y1+12+i),(f.x1+13,f.y1+3+i)], fill=(0,0,0), width=2)
+                    # Letzter Fallback: dickes Kreuz aus dicken Linien
+                    pad = 4
+                    d.line([(f.x1+pad, f.y1+pad), (f.x2-pad, f.y2-pad)], fill=(0,0,0), width=4)
+                    d.line([(f.x1+pad, f.y2-pad), (f.x2-pad, f.y1+pad)], fill=(0,0,0), width=4)
             elif f.type == "radio" and f.value in (True,"True","true","1"):
                 d.ellipse([f.x1+4,f.y1+4,f.x1+11,f.y1+11], fill=(0,0,0))
 
