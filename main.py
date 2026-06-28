@@ -129,7 +129,7 @@ class Stamp:
         ("GELESEN UND GELACHT", "#e91e63", "pink"),
     ]
 
-    def __init__(self, x=0, y=0, text="GEPRÜFT", color="#2ecc71", rotation=15):
+    def __init__(self, x=0, y=0, text="GEPRÜFT", color="#e67e22", rotation=15):
         self.x, self.y = x, y
         self.text = text
         self.color = color
@@ -147,7 +147,7 @@ class Stamp:
 
 class Arrow:
     """Ein Pfeil auf dem PDF von (x1,y1) nach (x2,y2)."""
-    def __init__(self, x1=0, y1=0, x2=0, y2=0, color="#e74c3c", width=4, head_len=25):
+    def __init__(self, x1=0, y1=0, x2=0, y2=0, color="#4a90d9", width=10, head_len=60):
         self.x1, self.y1 = x1, y1
         self.x2, self.y2 = x2, y2
         self.color = color
@@ -163,7 +163,7 @@ class Arrow:
 
 class Rect:
     """Ein Rechteck auf dem PDF."""
-    def __init__(self, x1=0, y1=0, x2=0, y2=0, color="#4a90d9", fill=None, width=3):
+    def __init__(self, x1=0, y1=0, x2=0, y2=0, color="#f5a623", fill=None, width=10):
         self.x1, self.y1 = min(x1, x2), min(y1, y2)
         self.x2, self.y2 = max(x1, x2), max(y1, y2)
         self.color = color
@@ -179,7 +179,7 @@ class Rect:
 
 class Mask:
     """Eine Maske auf dem PDF — deckt Inhalte ab (standardmäßig weiß gefüllt)."""
-    def __init__(self, x1=0, y1=0, x2=0, y2=0, color="#000000", fill="#ffffff", width=2):
+    def __init__(self, x1=0, y1=0, x2=0, y2=0, color="#e74c3c", fill="#ffffff", width=10):
         self.x1, self.y1 = min(x1, x2), min(y1, y2)
         self.x2, self.y2 = max(x1, x2), max(y1, y2)
         self.color = color
@@ -198,7 +198,7 @@ class Mask:
 
 class Line:
     """Eine Linie auf dem PDF von (x1,y1) nach (x2,y2)."""
-    def __init__(self, x1=0, y1=0, x2=0, y2=0, color="#e74c3c", width=3):
+    def __init__(self, x1=0, y1=0, x2=0, y2=0, color="#50c878", width=10):
         self.x1, self.y1 = x1, y1
         self.x2, self.y2 = x2, y2
         self.color = color
@@ -212,7 +212,7 @@ class Line:
 
 class Ellipse:
     """Eine Ellipse auf dem PDF."""
-    def __init__(self, x1=0, y1=0, x2=0, y2=0, color="#4a90d9", fill=None, width=3):
+    def __init__(self, x1=0, y1=0, x2=0, y2=0, color="#9b59b6", fill=None, width=10):
         self.x1, self.y1 = min(x1, x2), min(y1, y2)
         self.x2, self.y2 = max(x1, x2), max(y1, y2)
         self.color = color
