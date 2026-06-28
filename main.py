@@ -1635,8 +1635,8 @@ class App:
                 draw_y = f.y2 - text_h - 1 - pil_offset
                 d.text((f.x1 + 2, draw_y), str(f.value), fill=fill_color, font=font)
             elif f.type == "checkbox" and f.value in (True,"True","true","1"):
-                # ✓-Haken zentriert im Feld
-                ck_size = min(18, max(8, (f.y2 - f.y1) * 0.7))
+                # ✓-Haken zentriert im Feld — 70% der Feldhöhe
+                ck_size = max(10, (f.y2 - f.y1) * 0.65)
                 ck_font = get_font(ck_size, self.font_name)
                 if ck_font is None:
                     ck_font = get_font(ck_size)
@@ -1646,7 +1646,7 @@ class App:
                 ck_h = bbox[3] - bbox[1]
                 dx = cx - ck_w // 2
                 dy = cy - ck_h // 2 - bbox[1]
-                d.text((dx, dy), chr(0x2713), fill=(0,0,0), font=ck_font)
+                d.text((dx, dy), chr(0x2713), fill="red", font=ck_font)
             elif f.type == "radio" and f.value in (True,"True","true","1"):
                 d.ellipse([f.x1+4,f.y1+4,f.x1+11,f.y1+11], fill=(0,0,0))
 
