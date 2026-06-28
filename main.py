@@ -144,6 +144,18 @@ class Rect:
                 "fill": self.fill}
 
 
+class Line:
+    """Eine Linie auf dem PDF von (x1,y1) nach (x2,y2)."""
+    def __init__(self, x1=0, y1=0, x2=0, y2=0, color="#e74c3c"):
+        self.x1, self.y1 = x1, y1
+        self.x2, self.y2 = x2, y2
+        self.color = color
+
+    def to_dict(self):
+        return {"x1": self.x1, "y1": self.y1,
+                "x2": self.x2, "y2": self.y2, "color": self.color}
+
+
 class App:
     def __init__(self, root):
         self.root = root
@@ -165,6 +177,7 @@ class App:
         self.stamps = {}  # dict: {"0": [Stamp, ...], "1": [...]}
         self.arrows = {}  # dict: {"0": [Arrow, ...], "1": [...]}
         self.rects = {}   # dict: {"0": [Rect, ...], "1": [...]}
+        self.lines = {}   # dict: {"0": [Line, ...], "1": [...]}
 
         # --- Undo-History ---
         self.undo_stack = {}  # {page_key: [snapshots]}
@@ -595,6 +608,7 @@ class App:
         self.stamps = {}
         self.arrows = {}
         self.rects = {}
+        self.lines = {}
         self._stempel_images = {}
         self._stempel_tk = {}
         self.current_page = 0
@@ -819,6 +833,7 @@ class App:
             "stamps": [s.to_dict() for s in self._current_stamps()],
             "arrows": [a.to_dict() for a in self._current_arrows()],
             "rects": [r.to_dict() for r in self._current_rects()],
+            "lines": [ln.to_dict() for ln in self._current_lines()],
         }
         if key not in self.undo_stack:
             self.undo_stack[key] = []
@@ -843,6 +858,7 @@ class App:
         self.stamps[key_st] = [Stamp(**s) for s in snap["stamps"]]
         self.arrows[key_st] = [Arrow(**a) for a in snap["arrows"]]
         self.rects[key_st] = [Rect(**r) for r in snap["rects"]]
+        self.lines[key_st] = [Line(**l) for l in snap["lines"]]
         self._render()
         self._status()
 
@@ -1131,6 +1147,13 @@ class App:
                 except Exception as e:
                     print(f"Rechteck-Fehler: {e}")
 
+            # Linien zeichnen
+            for ln in self._current_lines():
+                try:
+                    self._draw_line(ln)
+                except Exception as e:
+                    print(f"Linien-Fehler: {e}")
+
             self.cv.create_text(cw-10,10, anchor=tk.NE, text=f"{self.zoom*100:.0f}%",
                                fill="white", font=("Arial",10))
         except Exception as e: print(f"Render: {e}")
@@ -1260,6 +1283,11 @@ class App:
             self._drag_mode = "rect"
             return
 
+        if self.selected_tool == "Linie":
+            self._line_start = (int(px), int(py))
+            self._drag_mode = "line"
+            return
+
         if self.mode == "edit":
             self._nf_px, self._nf_py = px, py
             self._drag_mode = "newfield"
@@ -1379,6 +1407,20 @@ class App:
             self.cv.create_rectangle(rx1, ry1, rx2, ry2,
                                      outline=C["accent"], width=2, dash=(4, 4), tags="drag")
 
+        elif dm == "line":
+            px, py = self._ic(e)
+            x1, y1 = self._line_start
+            if abs(px - x1) < 3 and abs(py - y1) < 3:
+                return
+            self.cv.delete("drag")
+            z = self.zoom
+            ox, oy = self.ox, self.oy
+            self.cv.create_line(
+                ox + int(x1 * z), oy + int(y1 * z),
+                ox + int(px * z), oy + int(py * z),
+                fill=C["accent"], width=2, dash=(4, 4), tags="drag"
+            )
+
     def _release_b1(self, e):
         """Button-1 loslassen: je nach drag_mode"""
         dm = getattr(self, '_drag_mode', None)
@@ -1433,6 +1475,17 @@ class App:
                 if key not in self.rects:
                     self.rects[key] = []
                 self.rects[key].append(Rect(x1=x1, y1=y1, x2=int(px), y2=int(py)))
+                self._render()
+                self._status()
+        elif dm == "line" and e:
+            px, py = self._ic(e)
+            x1, y1 = self._line_start
+            if abs(px - x1) >= 8 or abs(py - y1) >= 8:
+                self._undo_snapshot()
+                key = str(self.current_page)
+                if key not in self.lines:
+                    self.lines[key] = []
+                self.lines[key].append(Line(x1=x1, y1=y1, x2=int(px), y2=int(py)))
                 self._render()
                 self._status()
 
@@ -1521,6 +1574,16 @@ class App:
                 if messagebox.askyesno("Loeschen", "Dieses Rechteck loeschen?"):
                     self._undo_snapshot()
                     self._current_rects().remove(r)
+                    self._render()
+                    self._status()
+                return
+        # Linie loeschen
+        for ln in reversed(self._current_lines()):
+            tol = 15 / self.zoom if self.zoom > 0 else 15
+            if self._point_near_line(px, py, ln.x1, ln.y1, ln.x2, ln.y2, tol=tol):
+                if messagebox.askyesno("Loeschen", "Diese Linie loeschen?"):
+                    self._undo_snapshot()
+                    self._current_lines().remove(ln)
                     self._render()
                     self._status()
                 return
@@ -1671,6 +1734,13 @@ class App:
             except Exception as e:
                 print(f"Rechteck-PDF-Fehler: {e}")
 
+        # Linien auf PDF malen
+        for ln in self._current_lines():
+            try:
+                self._draw_line_pdf(d, ln)
+            except Exception as e:
+                print(f"Linien-PDF-Fehler: {e}")
+
         tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
         img.save(tmp.name, "PDF", resolution=300)
         return tmp.name
@@ -1714,8 +1784,12 @@ class App:
         """Gibt die Rechteck-Liste der aktuellen Seite zurück."""
         return self.rects.get(str(self.current_page), [])
 
+    def _current_lines(self):
+        """Gibt die Linien-Liste der aktuellen Seite zurück."""
+        return self.lines.get(str(self.current_page), [])
+
     @staticmethod
-    def _point_near_line(px, py, x1, y1, x2, y2, tol=15):
+    def _point_near_line(px, py, x1, y1, x2, y2, tol=15.0):
         """Prueft ob Punkt (px,py) nah an der Strecke (x1,y1)->(x2,y2) liegt."""
         import math
         dx, dy = x2 - x1, y2 - y1
@@ -1741,6 +1815,22 @@ class App:
         """Malt ein Rechteck auf das 300-DPI-PDF-Bild (ImageDraw)."""
         d.rectangle([(r.x1, r.y1), (r.x2, r.y2)],
                     outline=r.color, fill=r.fill, width=4)
+
+    def _draw_line(self, ln):
+        """Zeichnet eine Linie auf dem Canvas."""
+        z, ox, oy = self.zoom, self.ox, self.oy
+        x1 = ox + int(ln.x1 * z)
+        y1 = oy + int(ln.y1 * z)
+        x2 = ox + int(ln.x2 * z)
+        y2 = oy + int(ln.y2 * z)
+        line_w = max(1, int(3 * z))
+        self.cv.create_line(x1, y1, x2, y2,
+                           fill=ln.color, width=line_w, tags="f")
+
+    def _draw_line_pdf(self, d, ln):
+        """Malt eine Linie auf das 300-DPI-PDF-Bild (ImageDraw)."""
+        d.line([(ln.x1, ln.y1), (ln.x2, ln.y2)],
+               fill=ln.color, width=4)
 
     def _draw_arrow(self, a):
         """Zeichnet einen Pfeil auf dem Canvas — auf Seitenbereich begrenzt."""
