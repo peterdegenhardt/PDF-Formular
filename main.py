@@ -1535,8 +1535,17 @@ class App:
                 draw_y = f.y2 - text_h - 1 - pil_offset
                 d.text((f.x1 + 2, draw_y), str(f.value), fill=fill_color, font=font)
             elif f.type == "checkbox" and f.value in (True,"True","true","1"):
-                for i in range(2):
-                    d.line([(f.x1+2,f.y1+8+i),(f.x1+6,f.y1+12+i),(f.x1+13,f.y1+3+i)], fill=(0,0,0), width=2)
+                # ✓-Haken per Schrift — robust und skaliert mit der Feldgröße
+                try:
+                    ck_font = get_font(min(18, max(8, (f.y2 - f.y1) * 0.7)), self.font_name)
+                    cx, cy = (f.x1 + f.x2) // 2, (f.y1 + f.y2) // 2
+                    ref = ck_font.getbbox("✓")
+                    ck_h = ref[3] - ref[1]
+                    d.text((cx, cy - ck_h//2 - ref[1]), "✓", fill=(0,0,0), font=ck_font)
+                except Exception:
+                    # Fallback: manuelle Linien als Notlösung
+                    for i in range(2):
+                        d.line([(f.x1+2,f.y1+8+i),(f.x1+6,f.y1+12+i),(f.x1+13,f.y1+3+i)], fill=(0,0,0), width=2)
             elif f.type == "radio" and f.value in (True,"True","true","1"):
                 d.ellipse([f.x1+4,f.y1+4,f.x1+11,f.y1+11], fill=(0,0,0))
 
@@ -1628,7 +1637,7 @@ class App:
                     outline=r.color, fill=r.fill, width=4)
 
     def _draw_arrow(self, a):
-        """Zeichnet einen Pfeil auf dem Canvas."""
+        """Zeichnet einen Pfeil auf dem Canvas — auf Seitenbereich begrenzt."""
         z, ox, oy = self.zoom, self.ox, self.oy
         x1 = ox + int(a.x1 * z)
         y1 = oy + int(a.y1 * z)
@@ -1636,6 +1645,14 @@ class App:
         y2 = oy + int(a.y2 * z)
         head_len = max(3, int(50 * z))
         line_w = max(1, int(12 * z))
+        # Auf Canvas-Seite clippen (innerhalb des PDF-Bereichs)
+        if self.pdf_image:
+            pw = int(self.pdf_image.width * z)
+            ph = int(self.pdf_image.height * z)
+            x1 = max(ox, min(ox + pw, x1))
+            y1 = max(oy, min(oy + ph, y1))
+            x2 = max(ox, min(ox + pw, x2))
+            y2 = max(oy, min(oy + ph, y2))
         self._draw_arrow_line(self.cv, x1, y1, x2, y2, a.color, width=line_w, head_len=head_len, tags="f")
 
     def _draw_arrow_preview(self, x1, y1, x2, y2):
@@ -1643,8 +1660,13 @@ class App:
         self._draw_arrow_line(self.cv, x1, y1, x2, y2, C["accent"], width=2, head_len=18, dash=(4, 4), tags="drag")
 
     def _draw_arrow_pdf(self, d, a):
-        """Malt einen Pfeil auf das 300-DPI-PDF-Bild (ImageDraw)."""
-        self._draw_arrow_line_pil(d, a.x1, a.y1, a.x2, a.y2, a.color, width=8, head_len=45)
+        """Malt einen Pfeil auf das 300-DPI-PDF-Bild (ImageDraw) — auf Seitenbereich begrenzt."""
+        pw, ph = self.pdf_image.width, self.pdf_image.height
+        x1 = max(0, min(pw, a.x1))
+        y1 = max(0, min(ph, a.y1))
+        x2 = max(0, min(pw, a.x2))
+        y2 = max(0, min(ph, a.y2))
+        self._draw_arrow_line_pil(d, x1, y1, x2, y2, a.color, width=8, head_len=45)
 
     @staticmethod
     def _draw_arrow_line(cv, x1, y1, x2, y2, color, width=2, tags="f", dash=None, head_len=18):
