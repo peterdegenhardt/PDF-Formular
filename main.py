@@ -286,18 +286,17 @@ class App:
         self.grid_size = 15  # Einrast-Raster, jetzt einstellbar
         self.selected_tool = None  # Werkzeug aus Toolbox
         # Werkzeug-Voreinstellungen (per Rechtsklick änderbar)
-        self.tool_line_color = "#e74c3c"
-        self.tool_line_width = 3
-        self.tool_arrow_color = "#e74c3c"
-        self.tool_arrow_width = 4
-        self.tool_arrow_head_len = 25
-        self.tool_rect_color = "#4a90d9"
-        self.tool_rect_width = 3
-        self.tool_ellipse_color = "#4a90d9"
-        self.tool_ellipse_width = 3
-        self.tool_mask_color = "#000000"
-        self.tool_mask_fill = "#ffffff"
-        self.tool_mask_width = 2
+        self.tool_line_color = "#50c878"
+        self.tool_line_width = 10
+        self.tool_arrow_color = "#4a90d9"
+        self.tool_arrow_width = 10
+        self.tool_arrow_head_len = 60
+        self.tool_rect_color = "#f5a623"
+        self.tool_rect_width = 10
+        self.tool_ellipse_color = "#9b59b6"
+        self.tool_ellipse_width = 10
+        self.tool_mask_color = "#e74c3c"
+        self.tool_mask_width = 10
         self._stempel_images = {}  # PIL-Images für PDF-Export
         self._stempel_tk = {}  # tkinter-PhotoImages für Canvas
 
