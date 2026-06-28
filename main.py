@@ -1415,9 +1415,10 @@ class App:
             self.cv.delete("drag")
             z = self.zoom
             ox, oy = self.ox, self.oy
+            px2, py2 = self._snap_line(px, py, x1, y1)
             self.cv.create_line(
                 ox + int(x1 * z), oy + int(y1 * z),
-                ox + int(px * z), oy + int(py * z),
+                ox + int(px2 * z), oy + int(py2 * z),
                 fill=C["accent"], width=2, dash=(4, 4), tags="drag"
             )
 
@@ -1481,11 +1482,13 @@ class App:
             px, py = self._ic(e)
             x1, y1 = self._line_start
             if abs(px - x1) >= 8 or abs(py - y1) >= 8:
+                # Auf waagerecht/senkrecht einrasten
+                px2, py2 = self._snap_line(px, py, x1, y1)
                 self._undo_snapshot()
                 key = str(self.current_page)
                 if key not in self.lines:
                     self.lines[key] = []
-                self.lines[key].append(Line(x1=x1, y1=y1, x2=int(px), y2=int(py)))
+                self.lines[key].append(Line(x1=x1, y1=y1, x2=int(px2), y2=int(py2)))
                 self._render()
                 self._status()
 
@@ -1815,6 +1818,26 @@ class App:
         """Malt ein Rechteck auf das 300-DPI-PDF-Bild (ImageDraw)."""
         d.rectangle([(r.x1, r.y1), (r.x2, r.y2)],
                     outline=r.color, fill=r.fill, width=4)
+
+    @staticmethod
+    def _snap_line(px, py, x1, y1, threshold=15):
+        """Rastet (px,py) auf waagerecht oder senkrecht relativ zu (x1,y1) ein.
+        threshold: Winkel-Toleranz in Grad (0=exakt, 45=egal).
+        Gibt eingeschnapptes (px, py) zurück.
+        """
+        import math
+        dx = px - x1
+        dy = py - y1
+        if abs(dx) < 2 and abs(dy) < 2:
+            return int(px), int(py)
+        angle = abs(math.degrees(math.atan2(dy, dx)))
+        # Waagerecht: Winkel nahe 0° oder 180°
+        if angle <= threshold or angle >= 180 - threshold:
+            return int(px), y1  # y beibehalten → waagerecht
+        # Senkrecht: Winkel nahe 90° 
+        if abs(angle - 90) <= threshold:
+            return x1, int(py)  # x beibehalten → senkrecht
+        return int(px), int(py)
 
     def _draw_line(self, ln):
         """Zeichnet eine Linie auf dem Canvas."""
