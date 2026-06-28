@@ -592,7 +592,8 @@ class App:
         self.selected = None
         self.template_path = self.template_name = None
         self.project_path = self.project_name = None
-        self._render()
+        self.undo_stack = {}
+        self.cv.delete("all")
         self._status()
 
     def _color_dialog(self):
