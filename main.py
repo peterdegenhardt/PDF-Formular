@@ -1245,8 +1245,10 @@ class App:
                     self._render()
                     self._status()
                 elif f.type == "checkbox":
+                    print(f"CHECKBOX KLICK: value vorher={f.value}")
                     self._undo_snapshot()
                     f.value = not (f.value in (True, "True", "true", "1"))
+                    print(f"CHECKBOX KLICK: value nachher={f.value}")
                     self._render()
                     self._status()
                 elif f.type == "radio":
