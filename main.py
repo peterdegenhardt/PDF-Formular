@@ -448,15 +448,25 @@ class App:
         # ─── Icons aus icons/-Ordner laden ────────────────────
         def _icon_path(name):
             """Sucht icons/<name>.png im Projekt- oder EXE-Verzeichnis."""
+            icon_name = f"{name}.png"
+            # 1) PyInstaller: eingebettete Dateien (--add-data)
+            if hasattr(sys, '_MEIPASS'):
+                p = os.path.join(sys._MEIPASS, "icons", icon_name)
+                if os.path.exists(p):
+                    return p
+            # 2) Neben der EXE (sys.argv[0] -> dist/PDF-Formular.exe)
             base = os.path.dirname(os.path.abspath(sys.argv[0]))
-            p = os.path.join(base, "icons", f"{name}.png")
-            if os.path.exists(p): return p
-            # Fallback: Skript-Verzeichnis (für python main.py)
-            if hasattr(sys, '_MEIPASS'):  # PyInstaller
-                p = os.path.join(sys._MEIPASS, "icons", f"{name}.png")
-                if os.path.exists(p): return p
-            p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", f"{name}.png")
-            if os.path.exists(p): return p
+            p = os.path.join(base, "icons", icon_name)
+            if os.path.exists(p):
+                return p
+            # 3) Arbeitsverzeichnis (wenn build-exe von Projektroot aus)
+            p = os.path.join(os.path.abspath(os.curdir), "icons", icon_name)
+            if os.path.exists(p):
+                return p
+            # 4) Skript-Verzeichnis (python main.py)
+            p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", icon_name)
+            if os.path.exists(p):
+                return p
             return None
 
         self._icons_png = {}
