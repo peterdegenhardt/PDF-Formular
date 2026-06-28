@@ -1211,6 +1211,7 @@ class App:
         self._drag_mode = None  # noch kein Modus
         self.cv.delete("drag")
         px, py = self._ic(e)
+        print(f"CLICK: mode={self.mode}, tool={self.selected_tool}, pos=({px:.0f},{py:.0f})")
 
         # Werkzeug aus Toolbox?
         if self.selected_tool == "Stempel":
@@ -1238,6 +1239,7 @@ class App:
         elif self.mode == "fill":
             f = self._find(px, py)
             if f:
+                print(f"  GEFUNDEN: label='{f.label}', type={f.type}, value={f.value}")
                 if f.type == "text":
                     self.active_field = f
                     self.typing = True
@@ -1245,10 +1247,10 @@ class App:
                     self._render()
                     self._status()
                 elif f.type == "checkbox":
-                    print(f"CHECKBOX KLICK: value vorher={f.value}")
+                    print(f"  CHECKBOX: value vorher={f.value}")
                     self._undo_snapshot()
                     f.value = not (f.value in (True, "True", "true", "1"))
-                    print(f"CHECKBOX KLICK: value nachher={f.value}")
+                    print(f"  CHECKBOX: value nachher={f.value}")
                     self._render()
                     self._status()
                 elif f.type == "radio":
@@ -1260,6 +1262,7 @@ class App:
                     self._render()
                     self._status()
             else:
+                print("  NICHTS GEFUNDEN")
                 self._drag_mode = "pan"
                 self.pan_x, self.pan_y = e.x, e.y
                 self.cv.configure(cursor="fleur")
