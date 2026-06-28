@@ -1635,18 +1635,14 @@ class App:
                 draw_y = f.y2 - text_h - 1 - pil_offset
                 d.text((f.x1 + 2, draw_y), str(f.value), fill=fill_color, font=font)
             elif f.type == "checkbox" and f.value in (True,"True","true","1"):
-                # ✓-Haken zentriert im Feld — 70% der Feldhöhe
-                ck_size = max(10, (f.y2 - f.y1) * 0.65)
-                ck_font = get_font(ck_size, self.font_name)
-                if ck_font is None:
-                    ck_font = get_font(ck_size)
-                cx, cy = (f.x1 + f.x2) // 2, (f.y1 + f.y2) // 2
-                bbox = ck_font.getbbox(chr(0x2713))
-                ck_w = bbox[2] - bbox[0]
-                ck_h = bbox[3] - bbox[1]
-                dx = cx - ck_w // 2
-                dy = cy - ck_h // 2 - bbox[1]
-                d.text((dx, dy), chr(0x2713), fill="red", font=ck_font)
+                # ✓-Haken als Polygon — immer sichtbar, kein Font-Glyph nötig
+                cx = (f.x1 + f.x2) // 2
+                cy = (f.y1 + f.y2) // 2
+                s = (f.y2 - f.y1) * 0.2  # Skalierung proportional zur Feldgröße
+                s = max(3, min(10, s))
+                # ✓ aus zwei Linien: unten-links → mitte → oben-rechts
+                d.line([(cx - s*2, cy), (cx - s*0.5, cy + s*1.5), (cx + s*2, cy - s*1.5)],
+                       fill=(0,0,0), width=max(2, int(s*0.6)))
             elif f.type == "radio" and f.value in (True,"True","true","1"):
                 d.ellipse([f.x1+4,f.y1+4,f.x1+11,f.y1+11], fill=(0,0,0))
 
