@@ -1309,8 +1309,16 @@ class App:
                 "Liberation Mono": "Liberation Mono",
                 "DejaVu Sans": "DejaVu Sans",
                 "Arial": "Arial",
+                "Arial Bold": "Arial",
+                "Calibri": "Calibri",
+                "Calibri Bold": "Calibri",
+                "Times New Roman": "Times New Roman",
+                "Times New Roman Bold": "Times New Roman",
+                "Segoe UI": "Segoe UI",
+                "Segoe UI Bold": "Segoe UI",
+                "Consolas": "Consolas",
             }
-            fn = fn_map.get(self.font_name, "Liberation Sans")
+            fn = fn_map.get(self.font_name, self.font_name if self.font_name else "Arial")
             self.cv.create_text(x1+3, y_base, anchor=tk.SW, text=txt, fill=fc,
                                font=(fn,fs), tags="f")
 
