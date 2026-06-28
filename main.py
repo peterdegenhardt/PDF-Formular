@@ -462,13 +462,13 @@ class App:
         ]
         self._tool_buttons = {}
         for icon, name, tip in werkzeuge:
-            btn = tk.Button(self.toolbox, text=icon, font=("Segoe UI",14),
+            btn = tk.Button(self.toolbox, text=icon, font=("Segoe UI",13),
                           bg=C["bg"], fg=C["text"],
                           activebackground=C["accent"], activeforeground="#11111b",
-                          relief=tk.FLAT, bd=1, pady=4, padx=2,
+                          relief=tk.RAISED, bd=2, pady=4, padx=1,
                           cursor="hand2", width=3,
                           command=lambda n=name: self._set_tool(n))
-            btn.pack(pady=1, padx=2, fill=tk.X)
+            btn.pack(pady=(0,2), padx=3, fill=tk.X)
             self._tool_buttons[name] = btn
             self._attach_tooltip(btn, tip)
             # Rechtsklick für Werkzeug-Einstellungen
@@ -476,24 +476,24 @@ class App:
                 btn.bind("<Button-3>", lambda e, n=name: self._tool_settings_dialog(n))
 
         # Toolbox: Datum-Button unter den Werkzeugen
-        self.btn_date = tk.Button(self.toolbox, text="📅", font=("Segoe UI",14),
+        self.btn_date = tk.Button(self.toolbox, text="📅", font=("Segoe UI",13),
                                 bg=C["bg"], fg=C["text"],
                                 activebackground=C["accent"], activeforeground="#11111b",
-                                relief=tk.FLAT, bd=1, pady=4, padx=2,
+                                relief=tk.RAISED, bd=2, pady=4, padx=1,
                                 cursor="hand2", width=3,
                                 command=self._insert_date)
-        self.btn_date.pack(pady=(10,1), padx=2, fill=tk.X)
+        self.btn_date.pack(pady=(8,2), padx=3, fill=tk.X)
         self._attach_tooltip(self.btn_date, "Aktuelles Datum einfügen (TT.MM.JJJJ)")
 
         # Toolbox: Beenden-Button ganz unten
         self.toolbox_padding = tk.Frame(self.toolbox, bg=C["bg"])
         self.toolbox_padding.pack(fill=tk.BOTH, expand=True)
-        self.btn_exit = tk.Button(self.toolbox, text="❌", font=("Segoe UI",14),
+        self.btn_exit = tk.Button(self.toolbox, text="❌", font=("Segoe UI",13),
                                 bg=C["red"], fg="#11111b",
                                 activebackground=C["red"], activeforeground="#11111b",
-                                relief=tk.RAISED, bd=2, pady=4, padx=2,
+                                relief=tk.RAISED, bd=2, pady=4, padx=1,
                                 cursor="hand2", width=3, command=self._exit_app)
-        self.btn_exit.pack(side=tk.BOTTOM, pady=(0,4), padx=2)
+        self.btn_exit.pack(side=tk.BOTTOM, pady=(0,6), padx=3)
         self._attach_tooltip(self.btn_exit, "Beenden")
 
         # ─── Canvas-Bereich ────────────────────────────────────
