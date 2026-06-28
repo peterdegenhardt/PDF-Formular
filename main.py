@@ -120,14 +120,18 @@ class Stamp:
 
 class Arrow:
     """Ein Pfeil auf dem PDF von (x1,y1) nach (x2,y2)."""
-    def __init__(self, x1=0, y1=0, x2=0, y2=0, color="#e74c3c"):
+    def __init__(self, x1=0, y1=0, x2=0, y2=0, color="#e74c3c", width=4, head_len=25):
         self.x1, self.y1 = x1, y1
         self.x2, self.y2 = x2, y2
         self.color = color
+        self.width = width
+        self.head_len = head_len
 
     def to_dict(self):
         return {"x1": self.x1, "y1": self.y1,
-                "x2": self.x2, "y2": self.y2, "color": self.color}
+                "x2": self.x2, "y2": self.y2,
+                "color": self.color, "width": self.width,
+                "head_len": self.head_len}
 
 
 class Rect:
@@ -146,14 +150,16 @@ class Rect:
 
 class Line:
     """Eine Linie auf dem PDF von (x1,y1) nach (x2,y2)."""
-    def __init__(self, x1=0, y1=0, x2=0, y2=0, color="#e74c3c"):
+    def __init__(self, x1=0, y1=0, x2=0, y2=0, color="#e74c3c", width=3):
         self.x1, self.y1 = x1, y1
         self.x2, self.y2 = x2, y2
         self.color = color
+        self.width = width
 
     def to_dict(self):
         return {"x1": self.x1, "y1": self.y1,
-                "x2": self.x2, "y2": self.y2, "color": self.color}
+                "x2": self.x2, "y2": self.y2,
+                "color": self.color, "width": self.width}
 
 
 class App:
@@ -209,6 +215,12 @@ class App:
         self.ruler_step = 50  # Pixelabstand Lineal-Striche
         self.grid_size = 15  # Einrast-Raster, jetzt einstellbar
         self.selected_tool = None  # Werkzeug aus Toolbox
+        # Werkzeug-Voreinstellungen (per Rechtsklick änderbar)
+        self.tool_line_color = "#e74c3c"
+        self.tool_line_width = 3
+        self.tool_arrow_color = "#e74c3c"
+        self.tool_arrow_width = 4
+        self.tool_arrow_head_len = 25
         self._stempel_images = {}  # PIL-Images für PDF-Export
         self._stempel_tk = {}  # tkinter-PhotoImages für Canvas
 
@@ -382,6 +394,9 @@ class App:
             btn.pack(pady=1, padx=2, fill=tk.X)
             self._tool_buttons[name] = btn
             self._attach_tooltip(btn, tip)
+            # Rechtsklick für Werkzeug-Einstellungen
+            if name in ("Linie", "Pfeil"):
+                btn.bind("<Button-3>", lambda e, n=name: self._tool_settings_dialog(n))
 
         # Toolbox: Datum-Button unter den Werkzeugen
         self.btn_date = tk.Button(self.toolbox, text="📅", font=("Segoe UI",14),
@@ -1464,7 +1479,10 @@ class App:
                 key = str(self.current_page)
                 if key not in self.arrows:
                     self.arrows[key] = []
-                self.arrows[key].append(Arrow(x1=x1, y1=y1, x2=int(px), y2=int(py)))
+                self.arrows[key].append(Arrow(x1=x1, y1=y1, x2=int(px), y2=int(py),
+                                              color=self.tool_arrow_color,
+                                              width=self.tool_arrow_width,
+                                              head_len=self.tool_arrow_head_len))
                 self._render()
                 self._status()
         elif dm == "rect" and e:
@@ -1488,7 +1506,9 @@ class App:
                 key = str(self.current_page)
                 if key not in self.lines:
                     self.lines[key] = []
-                self.lines[key].append(Line(x1=x1, y1=y1, x2=int(px2), y2=int(py2)))
+                self.lines[key].append(Line(x1=x1, y1=y1, x2=int(px2), y2=int(py2),
+                                            color=self.tool_line_color,
+                                            width=self.tool_line_width))
                 self._render()
                 self._status()
 
@@ -1610,6 +1630,81 @@ class App:
         if self.panning:
             self.panning = False
             self.cv.configure(cursor="hand2")
+
+    def _tool_settings_dialog(self, tool):
+        """Rechtsklick-Dialog für Werkzeug-Einstellungen (Linie/Pfeil)."""
+        win = tk.Toplevel(self.root)
+        win.title(f"{tool} Einstellungen")
+        win.configure(bg=C["bg"])
+        win.resizable(False, False)
+        win.transient(self.root)
+        win.grab_set()
+        x = self.root.winfo_x() + 180
+        y = self.root.winfo_y() + 200
+        win.geometry(f"+{x}+{y}")
+
+        is_arrow = tool == "Pfeil"
+        color_key = "tool_arrow_color" if is_arrow else "tool_line_color"
+        width_key = "tool_arrow_width" if is_arrow else "tool_line_width"
+        cur_color = getattr(self, color_key, "#e74c3c")
+        cur_width = getattr(self, width_key, 3)
+
+        # ─── Farbe ───
+        tk.Label(win, text="Farbe:", bg=C["bg"], fg=C["text"],
+                 font=("Segoe UI", 10, "bold")).grid(row=0, column=0, sticky="w", padx=10, pady=(10,4))
+
+        farben = [("#e74c3c", "Rot"), ("#2ecc71", "Grün"), ("#3498db", "Blau"),
+                  ("#f39c12", "Orange"), ("#9b59b6", "Lila"), ("#1e1e2e", "Schwarz"),
+                  ("#000000", "Schwarz"), ("#555555", "Grau")]
+        # Deduplizieren
+        gesehen = set()
+        farb_btns = []
+        for c, lbl in farben:
+            if c in gesehen: continue
+            gesehen.add(c)
+            row = 0
+            col = len(farb_btns) + 1
+            if c == cur_color:
+                btn = tk.Button(win, text="✓", font=("Segoe UI", 8, "bold"),
+                               bg=c, fg="white" if c in ("#1e1e2e","#000000") else "#11111b",
+                               relief=tk.SUNKEN, bd=2, width=3, cursor="hand2")
+            else:
+                btn = tk.Button(win, text="  ", font=("Segoe UI", 8),
+                               bg=c, fg="white" if c in ("#1e1e2e","#000000") else "#11111b",
+                               relief=tk.FLAT, bd=2, width=3, cursor="hand2",
+                               command=lambda c=c: (setattr(self, color_key, c), win.destroy()))
+            btn.grid(row=0, column=col, padx=2, pady=(10,4))
+            farb_btns.append(btn)
+
+        # ─── Strichstärke ───
+        tk.Label(win, text="Strichstärke:", bg=C["bg"], fg=C["text"],
+                 font=("Segoe UI", 10, "bold")).grid(row=1, column=0, sticky="w", padx=10, pady=(6,4))
+
+        width_var = tk.IntVar(value=cur_width)
+        tk.Spinbox(win, from_=1, to=12, textvariable=width_var, width=8,
+                   font=("Segoe UI", 10), bg=C["bg"], fg=C["text"],
+                   buttonbackground=C["accent"]).grid(row=1, column=1, columnspan=3, sticky="w", padx=10)
+
+        head_len_var = None
+        if is_arrow:
+            # ─── Pfeilspitzengröße ───
+            tk.Label(win, text="Spitzengröße:", bg=C["bg"], fg=C["text"],
+                     font=("Segoe UI", 10, "bold")).grid(row=2, column=0, sticky="w", padx=10, pady=(6,4))
+            head_len_var = tk.IntVar(value=self.tool_arrow_head_len)
+            tk.Spinbox(win, from_=5, to=80, textvariable=head_len_var, width=8,
+                       font=("Segoe UI", 10), bg=C["bg"], fg=C["text"],
+                       buttonbackground=C["accent"]).grid(row=2, column=1, columnspan=3, sticky="w", padx=10)
+
+        # ─── OK ───
+        btn_row = 3 if is_arrow else 2
+        tk.Button(win, text="OK", font=("Segoe UI", 10, "bold"),
+                 bg=C["green"], fg="#11111b", bd=0, padx=20, pady=4, cursor="hand2",
+                 command=lambda c=cur_color: (
+                     setattr(self, color_key, c),
+                     setattr(self, width_key, width_var.get()),
+                     setattr(self, "tool_arrow_head_len", head_len_var.get()) if is_arrow else None,
+                     win.destroy())
+                 ).grid(row=btn_row, column=0, columnspan=5, pady=(12,10))
 
     def _field_dialog(self, f):
         """Ein Dialog für Feldname + Typ (statt zwei hintereinander)."""
@@ -1846,14 +1941,15 @@ class App:
         y1 = oy + int(ln.y1 * z)
         x2 = ox + int(ln.x2 * z)
         y2 = oy + int(ln.y2 * z)
-        line_w = max(1, int(3 * z))
+        line_w = max(1, int(ln.width * z))
         self.cv.create_line(x1, y1, x2, y2,
                            fill=ln.color, width=line_w, tags="f")
 
     def _draw_line_pdf(self, d, ln):
         """Malt eine Linie auf das 300-DPI-PDF-Bild (ImageDraw)."""
+        pw = max(1, ln.width)
         d.line([(ln.x1, ln.y1), (ln.x2, ln.y2)],
-               fill=ln.color, width=4)
+               fill=ln.color, width=pw)
 
     def _draw_arrow(self, a):
         """Zeichnet einen Pfeil auf dem Canvas — auf Seitenbereich begrenzt."""
@@ -1862,8 +1958,8 @@ class App:
         y1 = oy + int(a.y1 * z)
         x2 = ox + int(a.x2 * z)
         y2 = oy + int(a.y2 * z)
-        head_len = max(3, int(50 * z))
-        line_w = max(1, int(12 * z))
+        head_len = max(3, int(a.head_len * z))
+        line_w = max(1, int(a.width * z))
         # Auf Canvas-Seite clippen (innerhalb des PDF-Bereichs)
         if self.pdf_image:
             pw = int(self.pdf_image.width * z)
@@ -1885,7 +1981,9 @@ class App:
         y1 = max(0, min(ph, a.y1))
         x2 = max(0, min(pw, a.x2))
         y2 = max(0, min(ph, a.y2))
-        self._draw_arrow_line_pil(d, x1, y1, x2, y2, a.color, width=8, head_len=45)
+        self._draw_arrow_line_pil(d, x1, y1, x2, y2, a.color,
+                                  width=max(1, a.width * 2),
+                                  head_len=max(10, a.head_len * 2))
 
     @staticmethod
     def _draw_arrow_line(cv, x1, y1, x2, y2, color, width=2, tags="f", dash=None, head_len=18):
