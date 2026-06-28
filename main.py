@@ -813,9 +813,10 @@ class App:
                 self.toolbox_padding.configure(bg=C["bg"])
                 for n, btn in self._tool_buttons.items():
                     if n == self.selected_tool:
-                        btn.configure(bg=C["accent"], fg="#11111b")
+                        btn.state(["pressed"])
+                        btn.state(["!active"])
                     else:
-                        btn.configure(bg=C["bg"], fg=C["text"])
+                        btn.state(["!pressed"])
             # Page-Label einfärben
             if hasattr(self, 'page_label'):
                 self.page_label.configure(bg=C["bg"], fg=C["text"])
@@ -979,7 +980,7 @@ class App:
         if self.selected_tool:
             self.selected_tool = None
             for n, btn in self._tool_buttons.items():
-                btn.configure(bg=C["bg"], fg=C["text"], relief=tk.FLAT)
+                btn.state(["!pressed"])
             self._status()
 
     def _set_mode(self, mode):
@@ -988,7 +989,7 @@ class App:
         # Werkzeug-Modus beim Modus-Wechsel zurücksetzen
         self.selected_tool = None
         for n, btn in self._tool_buttons.items():
-            btn.configure(bg=C["bg"], fg=C["text"], relief=tk.FLAT)
+            btn.state(["!pressed"])
         if mode == "fill":
             self.btn_fill.configure(bg=C["accent"], fg="#11111b")
             self.btn_edit.configure(bg=C["status"], fg=C["dim"])
