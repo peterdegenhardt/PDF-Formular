@@ -28,6 +28,16 @@ FONT_CHOICES = [
     ("Liberation Mono", "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf"),
     ("DejaVu Sans", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
     ("Arial", "arial.ttf"),
+    # Windows-Schriftarten
+    ("Arial", "C:\\Windows\\Fonts\\arial.ttf"),
+    ("Arial Bold", "C:\\Windows\\Fonts\\arialbd.ttf"),
+    ("Calibri", "C:\\Windows\\Fonts\\calibri.ttf"),
+    ("Calibri Bold", "C:\\Windows\\Fonts\\calibrib.ttf"),
+    ("Times New Roman", "C:\\Windows\\Fonts\\times.ttf"),
+    ("Times New Roman Bold", "C:\\Windows\\Fonts\\timesbd.ttf"),
+    ("Segoe UI", "C:\\Windows\\Fonts\\segoeui.ttf"),
+    ("Segoe UI Bold", "C:\\Windows\\Fonts\\segoeuib.ttf"),
+    ("Consolas", "C:\\Windows\\Fonts\\consola.ttf"),
 ]
 
 def get_font_path(name):
@@ -52,6 +62,19 @@ def get_font(size_pt, name=None):
         if os.path.exists(p):
             try: return ImageFont.truetype(p, px)
             except: pass
+    # Letzter Fallback: System-unabhaengigen TTF suchen
+    import platform
+    if platform.system() == "Windows":
+        win_fonts = [
+            r"C:\Windows\Fonts\arial.ttf",
+            r"C:\Windows\Fonts\segoeui.ttf",
+            r"C:\Windows\Fonts\calibri.ttf",
+            r"C:\Windows\Fonts\consola.ttf",
+        ]
+        for fp in win_fonts:
+            if os.path.exists(fp):
+                try: return ImageFont.truetype(fp, px)
+                except: pass
     return ImageFont.load_default()
 
 def detect_font_size(pdf_path):
