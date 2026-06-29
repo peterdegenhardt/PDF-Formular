@@ -2441,7 +2441,7 @@ class App:
             return hex_color
 
     def _draw_highlighter(self, h):
-        """Zeichnet einen Textmarker auf dem Canvas — aufgehellte Farbe ohne Transparenz."""
+        """Zeichnet einen Textmarker auf dem Canvas — stipple-Raster lässt Hintergrund durchscheinen."""
         z, ox, oy = self.zoom, self.ox, self.oy
         x1 = ox + int(h.x1 * z)
         y1 = oy + int(h.y1 * z)
@@ -2450,7 +2450,7 @@ class App:
         fill_color = self._lighten_color(h.color, h.opacity)
         self.cv.create_rectangle(x1, y1, x2, y2,
                                  fill=fill_color, outline="",
-                                 width=0, tags="f")
+                                 stipple="gray50", width=0, tags="f")
 
     def _draw_highlighter_pdf(self, d, h):
         """Malt einen Textmarker auf das 300-DPI-PDF-Bild.
