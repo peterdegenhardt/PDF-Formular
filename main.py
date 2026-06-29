@@ -2335,26 +2335,8 @@ class App:
     def _scan_dialog(self):
         """Scannt ein Dokument und fügt es als neue Seite an das aktuelle PDF an."""
         if sys.platform != "linux":
-            messagebox.showinfo("Scan", "Scan nur unter Linux verfügbar (SANE).")
+            messagebox.showinfo("Scan", "Scan nur unter Linux verfügbar (SANE).\nNutze '📁 Bilddatei' als Alternative.")
             return
-        # Prüfen ob ein Scanner angeschlossen ist
-        import subprocess
-        try:
-            r = subprocess.run(["scanimage", "-L"], capture_output=True, text=True, timeout=5)
-            if not r.stdout.strip():
-                messagebox.showwarning("Kein Scanner",
-                    "Kein Scanner gefunden.\n"
-                    "Bitte Scanner anschließen und 'scanimage -L' im Terminal testen.")
-                return
-        except FileNotFoundError:
-            messagebox.showwarning("SANE fehlt",
-                "Scan-Programm 'scanimage' nicht gefunden.\n"
-                "Installiere: sudo apt install sane-utils")
-            return
-        except subprocess.TimeoutExpired:
-            messagebox.showerror("Fehler", "Scanner reagiert nicht.")
-            return
-
         # Dialog: scan oder foto?
         win = tk.Toplevel(self.root)
         win.title("Scan / Bild einfügen")
@@ -2394,30 +2376,67 @@ class App:
         win.bind("<Escape>", lambda e: win.destroy())
 
     def _scan_from_scanner(self):
-        """Startet einen Scanvorgang und fügt das Ergebnis als neue Seite ein."""
+        """Startet einen Scanvorgang und fügt das Ergebnis als neue Seite ein.
+        Versucht verschiedene SANE-Backends (scanimage, python-sane, sudo)."""
+        import subprocess, tempfile, os, shutil
+
+        # Prüfen ob scanimage existiert
+        scanimage_path = shutil.which("scanimage")
+        if not scanimage_path:
+            messagebox.showwarning("SANE fehlt",
+                "Scan-Programm 'scanimage' nicht gefunden.\n"
+                "Installiere: sudo apt install sane-utils\n"
+                "Danach evtl.: sudo sed -i 's/^# grundlag/grundlag/' /etc/sane.d/genesys.conf\n"
+                "Alternativ '📁 Bilddatei' nutzen.")
+            return
+
         self._status_text("Scanne... bitte warten")
         self.root.update()
-        import subprocess, tempfile
+
         tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
         tmp.close()
+
+        # Versuche 1: scanimage direkt
         try:
             r = subprocess.run(
-                ["scanimage", "--resolution", "300", "--format=png",
+                [scanimage_path, "--resolution", "300", "--format=png",
                  "-o", tmp.name],
-                capture_output=True, text=True, timeout=60)
-            if r.returncode != 0:
-                messagebox.showerror("Scan-Fehler", f"Scanimage fehlgeschlagen:\n{r.stderr}")
+                capture_output=True, text=True, timeout=30)
+            if r.returncode == 0:
+                scan_img = Image.open(tmp.name)
+                self._add_image_as_page(scan_img)
+                try: os.unlink(tmp.name)
+                except: pass
                 return
-            from PIL import Image
-            scan_img = Image.open(tmp.name)
-            self._add_image_as_page(scan_img)
-        except subprocess.TimeoutExpired:
-            messagebox.showerror("Scan", "Scan-Vorgang abgebrochen (Zeitüberschreitung).")
+            error_msg = r.stderr
         except Exception as e:
-            messagebox.showerror("Fehler", f"Scan fehlgeschlagen:\n{e}")
-        finally:
-            try: os.unlink(tmp.name)
-            except: pass
+            error_msg = str(e)
+
+        # Versuche 2: mit sudo (falls Scanner keine User-Rechte hat)
+        try:
+            r = subprocess.run(
+                ["sudo", "-n", scanimage_path, "--resolution", "300",
+                 "--format=png", "-o", tmp.name],
+                capture_output=True, text=True, timeout=30)
+            if r.returncode == 0:
+                scan_img = Image.open(tmp.name)
+                self._add_image_as_page(scan_img)
+                self._status_text("Scan erfolgreich (mit sudo)")
+                try: os.unlink(tmp.name)
+                except: pass
+                return
+        except:
+            pass
+
+        # Beide fehlgeschlagen
+        messagebox.showerror("Scan-Fehler",
+            f"Scanner reagiert nicht.\n\n"
+            f"Fehler: {error_msg}\n\n"
+            f"Tipps:\n"
+            f"1. sudo apt install sane-utils\n"
+            f"2. scanimage -L im Terminal testen\n"
+            f"3. sudo scanimage -L (wenn User keine Rechte hat)\n"
+            f"4. Oder nutze '📁 Bilddatei'")
 
     def _scan_from_file(self):
         """Öffnet einen Bild-Dateidialog und fügt das Bild als neue Seite ein."""
