@@ -317,6 +317,7 @@ class App:
         self.tool_ellipse_width = 10
         self.tool_mask_color = "#e74c3c"
         self.tool_mask_width = 10
+        self.tool_mask_fill = "#ffffff"
         self.tool_highlighter_color = "#ffff00"  # Gelb wie Textmarker
         self.tool_highlighter_opacity = 0.3
         self._stempel_images = {}  # PIL-Images für PDF-Export
