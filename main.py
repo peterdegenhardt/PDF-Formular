@@ -491,7 +491,7 @@ class App:
             return None
 
         self._icons_png = {}
-        for iname in ("pfeil", "linie", "rechteck", "ellipse", "maske", "bild", "stempel", "datum"):
+        for iname in ("pfeil", "linie", "rechteck", "ellipse", "maske", "stempel", "marker", "datum"):
             path = _icon_path(iname)
             if path:
                 self._icons_png[iname] = tk.PhotoImage(file=path)
@@ -519,12 +519,21 @@ class App:
         self._tool_buttons = {}
         for ikey, name, tip in werkzeuge:
             img = self._icons_png.get(ikey)
-            btn = tk.Button(self.toolbox_inner, image=img if img else "",
-                          bg=C["bg"],
-                          activebackground="#89b4fa",
-                          relief=tk.RAISED, bd=2, pady=4, padx=2,
-                          cursor="hand2",
-                          command=lambda n=name: self._set_tool(n))
+            txt = {"Textmarker": "🖍️"}.get(name, "")
+            if img:
+                btn = tk.Button(self.toolbox_inner, image=img,
+                              bg=C["bg"],
+                              activebackground="#89b4fa",
+                              relief=tk.RAISED, bd=2, pady=4, padx=2,
+                              cursor="hand2",
+                              command=lambda n=name: self._set_tool(n))
+            else:
+                btn = tk.Button(self.toolbox_inner, text=txt or name[0],
+                              bg=C["bg"],
+                              activebackground="#89b4fa",
+                              relief=tk.RAISED, bd=2, pady=4, padx=2,
+                              cursor="hand2", font=("Segoe UI", 12),
+                              command=lambda n=name: self._set_tool(n))
             btn.pack(pady=(0,2), fill=tk.X, padx=2)
             self._tool_buttons[name] = btn
             self._attach_tooltip(btn, tip)
@@ -2432,7 +2441,7 @@ class App:
             return hex_color
 
     def _draw_highlighter(self, h):
-        """Zeichnet einen Textmarker auf dem Canvas."""
+        """Zeichnet einen Textmarker auf dem Canvas — echte Transparenz via stipple."""
         z, ox, oy = self.zoom, self.ox, self.oy
         x1 = ox + int(h.x1 * z)
         y1 = oy + int(h.y1 * z)
@@ -2440,8 +2449,8 @@ class App:
         y2 = oy + int(h.y2 * z)
         fill_color = self._lighten_color(h.color, h.opacity)
         self.cv.create_rectangle(x1, y1, x2, y2,
-                                 fill=fill_color, outline="#888888",
-                                 width=1, tags="f")
+                                 fill=fill_color, outline="",
+                                 stipple="gray25", width=0, tags="f")
 
     def _draw_highlighter_pdf(self, d, h):
         """Malt einen Textmarker auf das 300-DPI-PDF-Bild.
