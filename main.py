@@ -1667,9 +1667,9 @@ class App:
             hx2 = ox + int(max(x1, px) * z)
             hy2 = oy + int(max(y1, py) * z)
             # Halbtransparente Vorschau
-            alpha_color = self._alpha_color(self.tool_highlighter_color, 0.6)
+            light_color = self._lighten_color(self.tool_highlighter_color, 0.6)
             self.cv.create_rectangle(hx1, hy1, hx2, hy2,
-                                     fill=alpha_color, outline=self.tool_highlighter_color,
+                                     fill=light_color, outline=self.tool_highlighter_color,
                                      width=2, dash=(4, 4), tags="drag")
 
         elif dm == "line":
@@ -2416,16 +2416,18 @@ class App:
                     outline=m.color, fill=m.fill, width=max(1, m.width))
 
     @staticmethod
-    def _alpha_color(hex_color, opacity):
-        """Gibt eine hex-Farbe mit Alpha-Kanal für tkinter zurück.
-        tkinter unterstützt keinen echten Alpha-Kanal, aber für den Canvas
-        nutzen wir ein '#AARRGGBB' Format (HEX mit Alpha). Fallback: hellere Farbe."""
+    def _lighten_color(hex_color, opacity):
+        """Mischt eine hex-Farbe mit Weiß nach opacity (0=weiß, 1=pur).
+        tkinter < 8.7 unterstützt kein #AARRGGBB, daher mische ich die Farbe."""
         try:
             from PIL import ImageColor
-            r, g, b = ImageColor.getrgb(hex_color)
-            a = int(max(0, min(255, opacity * 255)))
-            # tkinter ab 8.6 unterstützt #AARRGGBB
-            return f"#{a:02x}{r:02x}{g:02x}{b:02x}"
+            r, g, b = ImageColor.getrgb(hex_color)[:3]
+            mix = max(0.0, min(1.0, opacity))
+            # opacity 0.3 = 70% Weiß + 30% Farbe
+            nr = int(r * mix + 255 * (1 - mix))
+            ng = int(g * mix + 255 * (1 - mix))
+            nb = int(b * mix + 255 * (1 - mix))
+            return f"#{nr:02x}{ng:02x}{nb:02x}"
         except:
             return hex_color
 
@@ -2436,10 +2438,10 @@ class App:
         y1 = oy + int(h.y1 * z)
         x2 = ox + int(h.x2 * z)
         y2 = oy + int(h.y2 * z)
-        fill_color = self._alpha_color(h.color, h.opacity)
+        fill_color = self._lighten_color(h.color, h.opacity)
         self.cv.create_rectangle(x1, y1, x2, y2,
-                                 fill=fill_color, outline="",
-                                 width=0, tags="f")
+                                 fill=fill_color, outline="#888888",
+                                 width=1, tags="f")
 
     def _draw_highlighter_pdf(self, d, h):
         """Malt einen Textmarker auf das 300-DPI-PDF-Bild.
