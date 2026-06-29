@@ -1982,7 +1982,16 @@ class App:
         is_rect = tool == "Rechteck"
         is_ellipse = tool == "Ellipse"
         is_mask = tool == "Maske"
+        is_highlighter = tool == "Textmarker"
         if is_mask:
+            color_key = "tool_mask_color"
+            width_key = "tool_mask_width"
+            fill_key = "tool_mask_fill"
+        elif is_highlighter:
+            color_key = "tool_highlighter_color"
+            width_key = None
+            fill_key = None
+        elif is_ellipse:
             color_key = "tool_mask_color"
             width_key = "tool_mask_width"
             fill_key = "tool_mask_fill"
@@ -2019,8 +2028,8 @@ class App:
                 else:
                     b.configure(text="  ", relief=tk.FLAT)
 
-        farben_liste = [("#e74c3c", "Rot"), ("#2ecc71", "Grün"), ("#3498db", "Blau"),
-                        ("#f39c12", "Orange"), ("#9b59b6", "Lila"),
+        farben_liste = [("#ffff00", "Gelb"), ("#e74c3c", "Rot"), ("#2ecc71", "Grün"),
+                        ("#3498db", "Blau"), ("#f39c12", "Orange"), ("#9b59b6", "Lila"),
                         ("#1e1e2e", "Schwarz"), ("#555555", "Grau")]
         farb_refs = []
         for col_idx, (c, lbl) in enumerate(farben_liste):
@@ -2090,11 +2099,30 @@ class App:
                 fill_refs.append((btn, c))
 
         btn_row = 4 if is_mask else (3 if is_arrow else 2)
+        if is_highlighter:
+            btn_row = 2
+            # Opacity-Schieber für Textmarker
+            tk.Label(win, text="Deckkraft:", bg=C["bg"], fg=C["text"],
+                     font=("Segoe UI", 10, "bold")).grid(row=1, column=0, sticky="w", padx=10, pady=(6,4))
+            opacity_var = tk.DoubleVar(value=self.tool_highlighter_opacity)
+            op_scale = tk.Scale(win, from_=0.1, to=0.8, resolution=0.1,
+                               orient=tk.HORIZONTAL, variable=opacity_var,
+                               bg=C["bg"], fg=C["text"], troughcolor=C["canvas"],
+                               highlightthickness=0, length=160, bd=0,
+                               label="")
+            op_scale.grid(row=1, column=1, columnspan=4, sticky="w", padx=10)
+            op_lbl = tk.Label(win, textvariable=opacity_var, bg=C["bg"],
+                             fg=C["accent"], font=("Segoe UI", 10, "bold"), width=3)
+            op_lbl.grid(row=1, column=5, padx=2)
+            btn_row = 2
+
         tk.Button(win, text="OK", font=("Segoe UI", 10, "bold"),
                  bg=C["green"], fg="#11111b", bd=0, padx=20, pady=4, cursor="hand2",
                  command=lambda: (
-                     setattr(self, color_key, color_var.get()),
-                     setattr(self, width_key, width_var.get()),
+                     setattr(self, color_key, color_var.get()) if not is_highlighter else None,
+                     setattr(self, width_key, width_var.get()) if not is_highlighter and width_key else None,
+                     setattr(self, "tool_highlighter_color", color_var.get()) if is_highlighter else None,
+                     setattr(self, "tool_highlighter_opacity", opacity_var.get()) if is_highlighter else None,
                      setattr(self, "tool_arrow_head_len", head_len_var.get()) if is_arrow else None,
                      setattr(self, fill_key, fill_var.get()) if is_mask else None,
                      win.destroy())
