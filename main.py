@@ -2676,12 +2676,12 @@ class App:
         y2 = oy + int(m.y2 * z)
         line_w = max(1, int(m.width * z))
         self.cv.create_rectangle(x1, y1, x2, y2,
-                                outline=m.color, fill=m.fill, width=line_w, tags="f")
+                                outline="", fill=m.fill, width=0, tags="f")
 
     def _draw_mask_pdf(self, d, m):
         """Malt eine Maske auf das 300-DPI-PDF-Bild (ImageDraw)."""
         d.rectangle([(m.x1, m.y1), (m.x2, m.y2)],
-                    outline=m.color, fill=m.fill, width=max(1, m.width))
+                    outline="", fill=m.fill, width=0)
 
     @staticmethod
     def _lighten_color(hex_color, opacity):
