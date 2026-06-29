@@ -512,8 +512,8 @@ class App:
             ("rechteck", "Rechteck", "Rechteck zeichnen"),
             ("ellipse", "Ellipse", "Kreis/Ellipse zeichnen"),
             ("maske", "Maske", "Bereich maskieren"),
-            ("bild", "Bild", "Bild einfügen"),
             ("stempel", "Stempel", "Stempel aufdrücken"),
+            ("marker", "Textmarker", "Textmarker (halbtransparente Fläche)"),
         ]
 
         self._tool_buttons = {}
