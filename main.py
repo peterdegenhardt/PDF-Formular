@@ -492,7 +492,7 @@ class App:
             return None
 
         self._icons_png = {}
-        for iname in ("pfeil", "linie", "rechteck", "ellipse", "maske", "stempel", "marker", "datum"):
+        for iname in ("pfeil", "linie", "rechteck", "ellipse", "maske", "stempel", "marker", "foto", "datum"):
             path = _icon_path(iname)
             if path:
                 self._icons_png[iname] = tk.PhotoImage(file=path)
@@ -515,12 +515,13 @@ class App:
             ("maske", "Maske", "Bereich maskieren"),
             ("stempel", "Stempel", "Stempel aufdrücken"),
             ("marker", "Textmarker", "Textmarker (halbtransparente Fläche)"),
+            ("foto", "Bild einfügen", "Foto/Bild als neue Seite einfügen"),
         ]
 
         self._tool_buttons = {}
         for ikey, name, tip in werkzeuge:
             img = self._icons_png.get(ikey)
-            txt = {"Textmarker": "🖍️"}.get(name, "")
+            txt = {"Textmarker": "🖍️", "Bild einfügen": "🖼️"}.get(name, "")
             if img:
                 btn = tk.Button(self.toolbox_inner, image=img,
                               bg=C["bg"],
@@ -1513,6 +1514,13 @@ class App:
         if self.selected_tool == "Textmarker":
             self._highlighter_start = (int(px), int(py))
             self._drag_mode = "highlighter"
+            return
+
+        if self.selected_tool == "Bild einfügen":
+            self.selected_tool = None
+            for n, btn in self._tool_buttons.items():
+                btn.configure(bg=C["bg"], fg=C["text"], relief=tk.RAISED)
+            self._scan_from_file()
             return
 
         if self.mode == "edit":
