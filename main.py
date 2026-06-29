@@ -249,6 +249,31 @@ class Highlighter:
         return self.x1 <= px <= self.x2 and self.y1 <= py <= self.y2
 
 
+class BildObj:
+    """Ein eingefügtes Bild, skaliert in einen Rahmen (x1,y1)-(x2,y2)."""
+    def __init__(self, x1=0, y1=0, x2=0, y2=0, img_path=""):
+        self.x1, self.y1 = min(x1, x2), min(y1, y2)
+        self.x2, self.y2 = max(x1, x2), max(y1, y2)
+        self.img_path = img_path
+        self._pil = None  # PIL-Image (wird bei Bedarf geladen)
+        self._tk = None   # tk PhotoImage (wird bei Bedarf geladen)
+
+    def get_pil(self):
+        """Lazy-load PIL-Image."""
+        if self._pil is None and self.img_path and os.path.exists(self.img_path):
+            from PIL import Image
+            self._pil = Image.open(self.img_path).convert("RGBA")
+        return self._pil
+
+    def to_dict(self):
+        return {"x1": self.x1, "y1": self.y1,
+                "x2": self.x2, "y2": self.y2,
+                "img_path": self.img_path}
+
+    def contains(self, px, py):
+        return self.x1 <= px <= self.x2 and self.y1 <= py <= self.y2
+
+
 class App:
     def __init__(self, root):
         self.root = root
@@ -274,6 +299,7 @@ class App:
         self.ellipses = {}   # dict: {"0": [Ellipse, ...], "1": [...]}
         self.masks = {}   # dict: {"0": [Mask, ...], "1": [...]}
         self.highlighters = {}  # dict: {"0": [Highlighter, ...], "1": [...]}
+        self.images = {}  # dict: {"0": [BildObj, ...], "1": [...]}
 
         # --- Undo-History ---
         self.undo_stack = {}  # {page_key: [snapshots]}
@@ -681,6 +707,8 @@ class App:
             self.rects[key] = []
         if key not in self.highlighters:
             self.highlighters[key] = []
+        if key not in self.images:
+            self.images[key] = []
         self.selected = None
         self._fit_zoom()
         self._render()
@@ -787,6 +815,7 @@ class App:
         self.ellipses = {}
         self.masks = {}
         self.highlighters = {}
+        self.images = {}
         self._stempel_images = {}
         self._stempel_tk = {}
         self.current_page = 0
@@ -1015,6 +1044,7 @@ class App:
             "ellipses": [el.to_dict() for el in self._current_ellipses()],
             "masks": [m.to_dict() for m in self._current_masks()],
             "highlighters": [h.to_dict() for h in self._current_highlighters()],
+            "images": [bi.to_dict() for bi in self._current_images()],
         }
         if key not in self.undo_stack:
             self.undo_stack[key] = []
@@ -1043,6 +1073,7 @@ class App:
         self.ellipses[key_st] = [Ellipse(**e) for e in snap["ellipses"]]
         self.masks[key_st] = [Mask(**m) for m in snap["masks"]]
         self.highlighters[key_st] = [Highlighter(**h) for h in snap.get("highlighters", [])]
+        self.images[key_st] = [BildObj(**bi) for bi in snap.get("images", [])]
         self._render()
         self._status()
 
@@ -1359,6 +1390,13 @@ class App:
                 except Exception as e:
                     print(f"Textmarker-Fehler: {e}")
 
+            # Bilder zeichnen
+            for bi in self._current_images():
+                try:
+                    self._draw_image(bi)
+                except Exception as e:
+                    print(f"Bild-Fehler: {e}")
+
             self.cv.create_text(cw-10,10, anchor=tk.NE, text=f"{self.zoom*100:.0f}%",
                                fill="white", font=("Arial",10))
         except Exception as e: print(f"Render: {e}")
@@ -1517,10 +1555,8 @@ class App:
             return
 
         if self.selected_tool == "Bild einfügen":
-            self.selected_tool = None
-            for n, btn in self._tool_buttons.items():
-                btn.configure(bg=C["bg"], fg=C["text"], relief=tk.RAISED)
-            self._scan_from_file()
+            self._bild_start = (int(px), int(py))
+            self._drag_mode = "bild"
             return
 
         if self.mode == "edit":
@@ -1690,6 +1726,21 @@ class App:
                                      fill=light_color, outline=self.tool_highlighter_color,
                                      width=2, dash=(4, 4), tags="drag")
 
+        elif dm == "bild":
+            px, py = self._ic(e)
+            x1, y1 = self._bild_start
+            if abs(px - x1) < 3 and abs(py - y1) < 3:
+                return
+            self.cv.delete("drag")
+            z = self.zoom
+            ox, oy = self.ox, self.oy
+            bx1 = ox + int(min(x1, px) * z)
+            by1 = oy + int(min(y1, py) * z)
+            bx2 = ox + int(max(x1, px) * z)
+            by2 = oy + int(max(y1, py) * z)
+            self.cv.create_rectangle(bx1, by1, bx2, by2,
+                                     outline=C["accent"], width=2, dash=(4, 4), tags="drag")
+
         elif dm == "line":
             px, py = self._ic(e)
             x1, y1 = self._line_start
@@ -1807,6 +1858,29 @@ class App:
                     opacity=self.tool_highlighter_opacity))
                 self._render()
                 self._status()
+        elif dm == "bild" and e:
+            px, py = self._ic(e)
+            x1, y1 = self._bild_start
+            if abs(px - x1) >= 8 or abs(py - y1) >= 8:
+                self._undo_snapshot()
+                # Bild-Dialog öffnen
+                p = filedialog.askopenfilename(
+                    title="Bild auswählen",
+                    filetypes=[("Bilder", "*.png *.jpg *.jpeg *.tiff *.bmp *.webp"),
+                               ("Alle", "*.*")])
+                if p:
+                    key = str(self.current_page)
+                    if key not in self.images:
+                        self.images[key] = []
+                    self.images[key].append(BildObj(
+                        x1=x1, y1=y1, x2=int(px), y2=int(py),
+                        img_path=p))
+                self._render()
+                self._status()
+            # Tool-Modus zurücksetzen
+            self.selected_tool = None
+            for n, btn in self._tool_buttons.items():
+                btn.configure(bg=C["bg"], fg=C["text"], relief=tk.RAISED)
         elif dm == "line" and e:
             px, py = self._ic(e)
             x1, y1 = self._line_start
@@ -1945,6 +2019,15 @@ class App:
                 if messagebox.askyesno("Loeschen", "Diesen Textmarker loeschen?"):
                     self._undo_snapshot()
                     self._current_highlighters().remove(h)
+                    self._render()
+                    self._status()
+                return
+        # Bild loeschen
+        for bi in reversed(self._current_images()):
+            if bi.contains(px, py):
+                if messagebox.askyesno("Loeschen", "Dieses Bild loeschen?"):
+                    self._undo_snapshot()
+                    self._current_images().remove(bi)
                     self._render()
                     self._status()
                 return
@@ -2309,6 +2392,13 @@ class App:
             except Exception as e:
                 print(f"Masken-PDF-Fehler: {e}")
 
+        # Bilder auf PDF malen
+        for bi in self._current_images():
+            try:
+                self._draw_image_pdf(img, d, bi)
+            except Exception as e:
+                print(f"Bild-PDF-Fehler: {e}")
+
         tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
         # PDF mag kein RGBA — zurück nach RGB
         if img.mode == "RGBA":
@@ -2594,6 +2684,10 @@ class App:
         """Gibt die Textmarker-Liste der aktuellen Seite zurück."""
         return self.highlighters.get(str(self.current_page), [])
 
+    def _current_images(self):
+        """Gibt die Bilder-Liste der aktuellen Seite zurück."""
+        return self.images.get(str(self.current_page), [])
+
     @staticmethod
     def _point_near_line(px, py, x1, y1, x2, y2, tol=15.0):
         """Prueft ob Punkt (px,py) nah an der Strecke (x1,y1)->(x2,y2) liegt."""
@@ -2750,6 +2844,46 @@ class App:
             else:
                 self.pdf_image = self.pdf_image.convert("RGBA")
                 self.pdf_image = Image.alpha_composite(self.pdf_image, overlay)
+
+    def _draw_image(self, bi):
+        """Zeichnet ein Bild auf dem Canvas, skaliert in den Rahmen."""
+        pil_img = bi.get_pil()
+        if pil_img is None:
+            return
+        z, ox, oy = self.zoom, self.ox, self.oy
+        # Rahmen in Canvas-Koordinaten
+        bx1 = ox + int(bi.x1 * z)
+        by1 = oy + int(bi.y1 * z)
+        bx2 = ox + int(bi.x2 * z)
+        by2 = oy + int(bi.y2 * z)
+        bw, bh = bx2 - bx1, by2 - by1
+        if bw < 2 or bh < 2:
+            return
+        # Bild in den Rahmen skalieren
+        try:
+            from PIL import Image as PILImage
+            resized = pil_img.resize((bw, bh), PILImage.LANCZOS)
+            bi._tk = ImageTk.PhotoImage(resized)
+            self.cv.create_image(bx1, by1, anchor=tk.NW,
+                                 image=bi._tk, tags="f")
+        except:
+            pass
+
+    def _draw_image_pdf(self, img, d, bi):
+        """Malt ein Bild auf das 300-DPI-PDF, skaliert in den Rahmen."""
+        pil_img = bi.get_pil()
+        if pil_img is None:
+            return
+        bw = bi.x2 - bi.x1
+        bh = bi.y2 - bi.y1
+        if bw < 2 or bh < 2:
+            return
+        try:
+            from PIL import Image as PILImage
+            resized = pil_img.resize((bw, bh), PILImage.LANCZOS).convert("RGB")
+            img.paste(resized, (bi.x1, bi.y1))
+        except:
+            pass
 
     def _draw_arrow(self, a):
         """Zeichnet einen Pfeil auf dem Canvas — auf Seitenbereich begrenzt."""
