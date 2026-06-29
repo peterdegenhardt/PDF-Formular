@@ -427,9 +427,8 @@ class App:
         self._btn(self._tb, "Schrift", self._font_dialog, C["cyan"])
         self._add_sep()
 
-        # --- Drucken / Zoom / Scan ---
+        # --- Drucken / Zoom ---
         self._btn(self._tb, "Drucken", self._print_pdf, C["yellow"])
-        self._btn(self._tb, "Scan 📷", self._scan_dialog, C["cyan"])
         self._btn(self._tb, "−", lambda: self._do_zoom(0.8), C["status"], fg="#11111b")
         self._btn(self._tb, "+", lambda: self._do_zoom(1.25), C["status"], fg="#11111b")
         self._btn(self._tb, "1:1", self._zoom_reset, C["status"], fg="#11111b")
@@ -457,7 +456,6 @@ class App:
             "Raster": "Einrast-Raster-Größe ändern",
             "Schrift": "Schriftart, -größe und -farbe einstellen",
             "Drucken": "PDF in externem Betrachter öffnen (drucken)",
-            "Scan 📷": "Scannen und als neue PDF-Seite einfügen",
             "−": "Verkleinern (Rauszoomen)",
             "+": "Vergrößern (Reinzoomen)",
             "1:1": "Zoom zurücksetzen (100 %)",
