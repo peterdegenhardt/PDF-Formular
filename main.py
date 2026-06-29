@@ -2012,7 +2012,7 @@ class App:
             width_key = "tool_line_width"
             fill_key = None
         cur_color = getattr(self, color_key, "#e74c3c")
-        cur_width = getattr(self, width_key, 3)
+        cur_width = getattr(self, width_key, 3) if width_key else None
 
         # ─── Farbe ───
         color_var = tk.StringVar(value=cur_color)
@@ -2046,13 +2046,15 @@ class App:
             farb_refs.append((btn, c))
 
         # ─── Strichstärke ───
-        tk.Label(win, text="Strichstärke:", bg=C["bg"], fg=C["text"],
-                 font=("Segoe UI", 10, "bold")).grid(row=1, column=0, sticky="w", padx=10, pady=(6,4))
-
-        width_var = tk.IntVar(value=cur_width)
-        tk.Spinbox(win, from_=1, to=12, textvariable=width_var, width=8,
-                   font=("Segoe UI", 10), bg=C["bg"], fg=C["text"],
-                   buttonbackground=C["accent"]).grid(row=1, column=1, columnspan=3, sticky="w", padx=10)
+        if width_key:
+            tk.Label(win, text="Strichstärke:", bg=C["bg"], fg=C["text"],
+                     font=("Segoe UI", 10, "bold")).grid(row=1, column=0, sticky="w", padx=10, pady=(6,4))
+            width_var = tk.IntVar(value=cur_width)
+            tk.Spinbox(win, from_=1, to=12, textvariable=width_var, width=8,
+                       font=("Segoe UI", 10), bg=C["bg"], fg=C["text"],
+                       buttonbackground=C["accent"]).grid(row=1, column=1, columnspan=3, sticky="w", padx=10)
+        else:
+            width_var = None
 
         head_len_var = None
         if is_arrow:
@@ -2120,7 +2122,7 @@ class App:
                  bg=C["green"], fg="#11111b", bd=0, padx=20, pady=4, cursor="hand2",
                  command=lambda: (
                      setattr(self, color_key, color_var.get()) if not is_highlighter else None,
-                     setattr(self, width_key, width_var.get()) if not is_highlighter and width_key else None,
+                     setattr(self, width_key, width_var.get()) if (not is_highlighter and width_key and width_var is not None) else None,
                      setattr(self, "tool_highlighter_color", color_var.get()) if is_highlighter else None,
                      setattr(self, "tool_highlighter_opacity", opacity_var.get()) if is_highlighter else None,
                      setattr(self, "tool_arrow_head_len", head_len_var.get()) if is_arrow else None,
