@@ -230,6 +230,25 @@ class Ellipse:
         return self.x1 <= px <= self.x2 and self.y1 <= py <= self.y2
 
 
+class Highlighter:
+    """Ein Textmarker/Marker auf dem PDF — halbtransparente farbige Fläche."""
+    def __init__(self, x1=0, y1=0, x2=0, y2=0, color="#ffff00", opacity=0.3, width=10):
+        self.x1, self.y1 = min(x1, x2), min(y1, y2)
+        self.x2, self.y2 = max(x1, x2), max(y1, y2)
+        self.color = color
+        self.opacity = opacity  # 0.0 - 1.0 (Transparenz)
+        self.width = width
+
+    def to_dict(self):
+        return {"x1": self.x1, "y1": self.y1,
+                "x2": self.x2, "y2": self.y2,
+                "color": self.color, "opacity": self.opacity,
+                "width": self.width}
+
+    def contains(self, px, py):
+        return self.x1 <= px <= self.x2 and self.y1 <= py <= self.y2
+
+
 class App:
     def __init__(self, root):
         self.root = root
@@ -254,6 +273,7 @@ class App:
         self.lines = {}   # dict: {"0": [Line, ...], "1": [...]}
         self.ellipses = {}   # dict: {"0": [Ellipse, ...], "1": [...]}
         self.masks = {}   # dict: {"0": [Mask, ...], "1": [...]}
+        self.highlighters = {}  # dict: {"0": [Highlighter, ...], "1": [...]}
 
         # --- Undo-History ---
         self.undo_stack = {}  # {page_key: [snapshots]}
@@ -297,6 +317,8 @@ class App:
         self.tool_ellipse_width = 10
         self.tool_mask_color = "#e74c3c"
         self.tool_mask_width = 10
+        self.tool_highlighter_color = "#ffff00"  # Gelb wie Textmarker
+        self.tool_highlighter_opacity = 0.3
         self._stempel_images = {}  # PIL-Images für PDF-Export
         self._stempel_tk = {}  # tkinter-PhotoImages für Canvas
 
@@ -513,7 +535,7 @@ class App:
                 if b.cget("bg") != C["accent"]: b.configure(bg=C["bg"])
             btn.bind("<Enter>", on_enter)
             btn.bind("<Leave>", on_leave)
-            if name in ("Linie", "Pfeil", "Rechteck", "Ellipse", "Maske"):
+            if name in ("Linie", "Pfeil", "Rechteck", "Ellipse", "Maske", "Textmarker"):
                 btn.bind("<Button-3>", lambda e, n=name: self._tool_settings_dialog(n))
 
         img_datum = self._icons_png.get("datum")
@@ -646,6 +668,8 @@ class App:
             self.arrows[key] = []
         if key not in self.rects:
             self.rects[key] = []
+        if key not in self.highlighters:
+            self.highlighters[key] = []
         self.selected = None
         self._fit_zoom()
         self._render()
@@ -751,6 +775,7 @@ class App:
         self.lines = {}
         self.ellipses = {}
         self.masks = {}
+        self.highlighters = {}
         self._stempel_images = {}
         self._stempel_tk = {}
         self.current_page = 0
@@ -978,6 +1003,7 @@ class App:
             "lines": [ln.to_dict() for ln in self._current_lines()],
             "ellipses": [el.to_dict() for el in self._current_ellipses()],
             "masks": [m.to_dict() for m in self._current_masks()],
+            "highlighters": [h.to_dict() for h in self._current_highlighters()],
         }
         if key not in self.undo_stack:
             self.undo_stack[key] = []
@@ -1005,6 +1031,7 @@ class App:
         self.lines[key_st] = [Line(**l) for l in snap["lines"]]
         self.ellipses[key_st] = [Ellipse(**e) for e in snap["ellipses"]]
         self.masks[key_st] = [Mask(**m) for m in snap["masks"]]
+        self.highlighters[key_st] = [Highlighter(**h) for h in snap.get("highlighters", [])]
         self._render()
         self._status()
 
@@ -1314,6 +1341,13 @@ class App:
                 except Exception as e:
                     print(f"Masken-Fehler: {e}")
 
+            # Textmarker zeichnen
+            for h in self._current_highlighters():
+                try:
+                    self._draw_highlighter(h)
+                except Exception as e:
+                    print(f"Textmarker-Fehler: {e}")
+
             self.cv.create_text(cw-10,10, anchor=tk.NE, text=f"{self.zoom*100:.0f}%",
                                fill="white", font=("Arial",10))
         except Exception as e: print(f"Render: {e}")
@@ -1466,6 +1500,11 @@ class App:
             self._drag_mode = "line"
             return
 
+        if self.selected_tool == "Textmarker":
+            self._highlighter_start = (int(px), int(py))
+            self._drag_mode = "highlighter"
+            return
+
         if self.mode == "edit":
             self._nf_px, self._nf_py = px, py
             self._drag_mode = "newfield"
@@ -1615,6 +1654,24 @@ class App:
             self.cv.create_rectangle(mx1, my1, mx2, my2,
                                      outline=C["accent"], width=2, dash=(4, 4), tags="drag")
 
+        elif dm == "highlighter":
+            px, py = self._ic(e)
+            x1, y1 = self._highlighter_start
+            if abs(px - x1) < 3 and abs(py - y1) < 3:
+                return
+            self.cv.delete("drag")
+            z = self.zoom
+            ox, oy = self.ox, self.oy
+            hx1 = ox + int(min(x1, px) * z)
+            hy1 = oy + int(min(y1, py) * z)
+            hx2 = ox + int(max(x1, px) * z)
+            hy2 = oy + int(max(y1, py) * z)
+            # Halbtransparente Vorschau
+            alpha_color = self._alpha_color(self.tool_highlighter_color, 0.6)
+            self.cv.create_rectangle(hx1, hy1, hx2, hy2,
+                                     fill=alpha_color, outline=self.tool_highlighter_color,
+                                     width=2, dash=(4, 4), tags="drag")
+
         elif dm == "line":
             px, py = self._ic(e)
             x1, y1 = self._line_start
@@ -1716,6 +1773,20 @@ class App:
                                            color=self.tool_mask_color,
                                            fill=self.tool_mask_fill,
                                            width=self.tool_mask_width))
+                self._render()
+                self._status()
+        elif dm == "highlighter" and e:
+            px, py = self._ic(e)
+            x1, y1 = self._highlighter_start
+            if abs(px - x1) >= 8 or abs(py - y1) >= 8:
+                self._undo_snapshot()
+                key = str(self.current_page)
+                if key not in self.highlighters:
+                    self.highlighters[key] = []
+                self.highlighters[key].append(Highlighter(
+                    x1=x1, y1=y1, x2=int(px), y2=int(py),
+                    color=self.tool_highlighter_color,
+                    opacity=self.tool_highlighter_opacity))
                 self._render()
                 self._status()
         elif dm == "line" and e:
@@ -1847,6 +1918,15 @@ class App:
                 if messagebox.askyesno("Loeschen", "Diese Maske loeschen?"):
                     self._undo_snapshot()
                     self._current_masks().remove(m)
+                    self._render()
+                    self._status()
+                return
+        # Textmarker loeschen
+        for h in reversed(self._current_highlighters()):
+            if h.contains(px, py):
+                if messagebox.askyesno("Loeschen", "Diesen Textmarker loeschen?"):
+                    self._undo_snapshot()
+                    self._current_highlighters().remove(h)
                     self._render()
                     self._status()
                 return
@@ -2108,6 +2188,27 @@ class App:
                 d.line([(cx - s*2, cy), (cx - s*0.5, cy + s*1.5), (cx + s*2, cy - s*1.5)],
                        fill=(0,0,0), width=max(2, int(s*0.6)))
 
+        # Textmarker auf PDF malen (separates Alpha-Overlay)
+        if self._current_highlighters():
+            try:
+                from PIL import Image as PILImage, ImageDraw as PILDraw
+                pw, ph = img.width, img.height
+                overlay = PILImage.new("RGBA", (pw, ph), (0, 0, 0, 0))
+                od = PILDraw.Draw(overlay)
+                for h in self._current_highlighters():
+                    from PIL import ImageColor
+                    r, g, b = ImageColor.getrgb(h.color)
+                    a = int(max(0, min(255, h.opacity * 255)))
+                    od.rectangle([(h.x1, h.y1), (h.x2, h.y2)],
+                                 fill=(r, g, b, a), width=0)
+                if img.mode == "RGBA":
+                    img = PILImage.alpha_composite(img, overlay)
+                else:
+                    img = img.convert("RGBA")
+                    img = PILImage.alpha_composite(img, overlay)
+            except Exception as e:
+                print(f"Textmarker-PDF-Fehler: {e}")
+
         # Stempel auf PDF malen
         for s in self._current_stamps():
             try:
@@ -2213,6 +2314,10 @@ class App:
         """Gibt die Masken-Liste der aktuellen Seite zurück."""
         return self.masks.get(str(self.current_page), [])
 
+    def _current_highlighters(self):
+        """Gibt die Textmarker-Liste der aktuellen Seite zurück."""
+        return self.highlighters.get(str(self.current_page), [])
+
     @staticmethod
     def _point_near_line(px, py, x1, y1, x2, y2, tol=15.0):
         """Prueft ob Punkt (px,py) nah an der Strecke (x1,y1)->(x2,y2) liegt."""
@@ -2309,6 +2414,64 @@ class App:
         """Malt eine Maske auf das 300-DPI-PDF-Bild (ImageDraw)."""
         d.rectangle([(m.x1, m.y1), (m.x2, m.y2)],
                     outline=m.color, fill=m.fill, width=max(1, m.width))
+
+    @staticmethod
+    def _alpha_color(hex_color, opacity):
+        """Gibt eine hex-Farbe mit Alpha-Kanal für tkinter zurück.
+        tkinter unterstützt keinen echten Alpha-Kanal, aber für den Canvas
+        nutzen wir ein '#AARRGGBB' Format (HEX mit Alpha). Fallback: hellere Farbe."""
+        try:
+            from PIL import ImageColor
+            r, g, b = ImageColor.getrgb(hex_color)
+            a = int(max(0, min(255, opacity * 255)))
+            # tkinter ab 8.6 unterstützt #AARRGGBB
+            return f"#{a:02x}{r:02x}{g:02x}{b:02x}"
+        except:
+            return hex_color
+
+    def _draw_highlighter(self, h):
+        """Zeichnet einen Textmarker auf dem Canvas."""
+        z, ox, oy = self.zoom, self.ox, self.oy
+        x1 = ox + int(h.x1 * z)
+        y1 = oy + int(h.y1 * z)
+        x2 = ox + int(h.x2 * z)
+        y2 = oy + int(h.y2 * z)
+        fill_color = self._alpha_color(h.color, h.opacity)
+        self.cv.create_rectangle(x1, y1, x2, y2,
+                                 fill=fill_color, outline="",
+                                 width=0, tags="f")
+
+    def _draw_highlighter_pdf(self, d, h):
+        """Malt einen Textmarker auf das 300-DPI-PDF-Bild.
+        PIL ImageDraw unterstützt kein RGBA-Fill in Rechtecken direkt.
+        Wir zeichnen mit fester Deckkraft auf einem separaten Layer und
+        komponieren das Bild über eine Paste mit Alpha."""
+        from PIL import Image, ImageDraw
+        pw, ph = self.pdf_image.width, self.pdf_image.height
+        # Ein semi-transparentes Overlay-Layer erzeugen
+        overlay = Image.new("RGBA", (pw, ph), (0, 0, 0, 0))
+        od = ImageDraw.Draw(overlay)
+        try:
+            from PIL import ImageColor
+            r, g, b = ImageColor.getrgb(h.color)
+            a = int(max(0, min(255, h.opacity * 255)))
+            od.rectangle([(h.x1, h.y1), (h.x2, h.y2)],
+                         fill=(r, g, b, a), width=0)
+            # Overlay auf das PDF-Bild pasten
+            if self.pdf_image.mode == "RGBA":
+                self.pdf_image = Image.alpha_composite(self.pdf_image, overlay)
+            else:
+                self.pdf_image = self.pdf_image.convert("RGBA")
+                self.pdf_image = Image.alpha_composite(self.pdf_image, overlay)
+        except:
+            # Fallback: einfaches Füllen ohne Alpha
+            od.rectangle([(h.x1, h.y1), (h.x2, h.y2)],
+                         fill=h.color, width=0)
+            if self.pdf_image.mode == "RGBA":
+                self.pdf_image = Image.alpha_composite(self.pdf_image, overlay)
+            else:
+                self.pdf_image = self.pdf_image.convert("RGBA")
+                self.pdf_image = Image.alpha_composite(self.pdf_image, overlay)
 
     def _draw_arrow(self, a):
         """Zeichnet einen Pfeil auf dem Canvas — auf Seitenbereich begrenzt."""
