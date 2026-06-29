@@ -427,8 +427,9 @@ class App:
         self._btn(self._tb, "Schrift", self._font_dialog, C["cyan"])
         self._add_sep()
 
-        # --- Drucken / Zoom ---
+        # --- Drucken / Zoom / Scan ---
         self._btn(self._tb, "Drucken", self._print_pdf, C["yellow"])
+        self._btn(self._tb, "Scan 📷", self._scan_dialog, C["cyan"])
         self._btn(self._tb, "−", lambda: self._do_zoom(0.8), C["status"], fg="#11111b")
         self._btn(self._tb, "+", lambda: self._do_zoom(1.25), C["status"], fg="#11111b")
         self._btn(self._tb, "1:1", self._zoom_reset, C["status"], fg="#11111b")
@@ -456,6 +457,7 @@ class App:
             "Raster": "Einrast-Raster-Größe ändern",
             "Schrift": "Schriftart, -größe und -farbe einstellen",
             "Drucken": "PDF in externem Betrachter öffnen (drucken)",
+            "Scan 📷": "Scannen und als neue PDF-Seite einfügen",
             "−": "Verkleinern (Rauszoomen)",
             "+": "Vergrößern (Reinzoomen)",
             "1:1": "Zoom zurücksetzen (100 %)",
@@ -2329,6 +2331,206 @@ class App:
             elif sys.platform == "win32": os.startfile(p)
             elif sys.platform == "darwin": os.system(f"open '{p}'")
         except Exception as e: messagebox.showerror("Fehler", str(e))
+
+    def _scan_dialog(self):
+        """Scannt ein Dokument und fügt es als neue Seite an das aktuelle PDF an."""
+        if sys.platform != "linux":
+            messagebox.showinfo("Scan", "Scan nur unter Linux verfügbar (SANE).")
+            return
+        # Prüfen ob ein Scanner angeschlossen ist
+        import subprocess
+        try:
+            r = subprocess.run(["scanimage", "-L"], capture_output=True, text=True, timeout=5)
+            if not r.stdout.strip():
+                messagebox.showwarning("Kein Scanner",
+                    "Kein Scanner gefunden.\n"
+                    "Bitte Scanner anschließen und 'scanimage -L' im Terminal testen.")
+                return
+        except FileNotFoundError:
+            messagebox.showwarning("SANE fehlt",
+                "Scan-Programm 'scanimage' nicht gefunden.\n"
+                "Installiere: sudo apt install sane-utils")
+            return
+        except subprocess.TimeoutExpired:
+            messagebox.showerror("Fehler", "Scanner reagiert nicht.")
+            return
+
+        # Dialog: scan oder foto?
+        win = tk.Toplevel(self.root)
+        win.title("Scan / Bild einfügen")
+        win.configure(bg=C["bg"])
+        win.transient(self.root)
+        win.grab_set()
+        win.resizable(False, False)
+
+        rx, ry = self.root.winfo_x(), self.root.winfo_y()
+        rw, rh = self.root.winfo_width(), self.root.winfo_height()
+        ww, wh = 320, 180
+        win.geometry(f"{ww}x{wh}+{rx+rw//2-ww//2}+{ry+rh//2-wh//2}")
+
+        tk.Label(win, text="Quelle auswählen:", bg=C["bg"], fg=C["text"],
+                font=("Segoe UI", 11, "bold")).pack(pady=(16, 10))
+
+        def _scan():
+            win.destroy()
+            self._scan_from_scanner()
+
+        def _from_file():
+            win.destroy()
+            self._scan_from_file()
+
+        btn_frame = tk.Frame(win, bg=C["bg"])
+        btn_frame.pack(pady=6)
+        tk.Button(btn_frame, text="📷 Scanner", command=_scan,
+                 bg=C["accent"], fg="#11111b", font=("Segoe UI", 10, "bold"),
+                 bd=0, padx=20, pady=6, cursor="hand2").pack(side=tk.LEFT, padx=6)
+        tk.Button(btn_frame, text="📁 Bilddatei", command=_from_file,
+                 bg=C["yellow"], fg="#11111b", font=("Segoe UI", 10, "bold"),
+                 bd=0, padx=20, pady=6, cursor="hand2").pack(side=tk.LEFT, padx=6)
+
+        tk.Button(win, text="Abbrechen", command=win.destroy,
+                 bg=C["red"], fg="#11111b", font=("Segoe UI", 9, "bold"),
+                 bd=0, padx=20, pady=4, cursor="hand2").pack(pady=(10, 0))
+        win.bind("<Escape>", lambda e: win.destroy())
+
+    def _scan_from_scanner(self):
+        """Startet einen Scanvorgang und fügt das Ergebnis als neue Seite ein."""
+        self._status_text("Scanne... bitte warten")
+        self.root.update()
+        import subprocess, tempfile
+        tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+        tmp.close()
+        try:
+            r = subprocess.run(
+                ["scanimage", "--resolution", "300", "--format=png",
+                 "-o", tmp.name],
+                capture_output=True, text=True, timeout=60)
+            if r.returncode != 0:
+                messagebox.showerror("Scan-Fehler", f"Scanimage fehlgeschlagen:\n{r.stderr}")
+                return
+            from PIL import Image
+            scan_img = Image.open(tmp.name)
+            self._add_image_as_page(scan_img)
+        except subprocess.TimeoutExpired:
+            messagebox.showerror("Scan", "Scan-Vorgang abgebrochen (Zeitüberschreitung).")
+        except Exception as e:
+            messagebox.showerror("Fehler", f"Scan fehlgeschlagen:\n{e}")
+        finally:
+            try: os.unlink(tmp.name)
+            except: pass
+
+    def _scan_from_file(self):
+        """Öffnet einen Bild-Dateidialog und fügt das Bild als neue Seite ein."""
+        p = filedialog.askopenfilename(
+            title="Bild auswählen",
+            filetypes=[("Bilder", "*.png *.jpg *.jpeg *.tiff *.bmp *.webp"),
+                       ("Alle", "*.*")])
+        if not p:
+            return
+        try:
+            from PIL import Image
+            img = Image.open(p)
+            self._add_image_as_page(img)
+        except Exception as e:
+            messagebox.showerror("Fehler", f"Bild konnte nicht geladen werden:\n{e}")
+
+    def _add_image_as_page(self, img):
+        """Fügt ein PIL-Bild als neue Seite hinten ans aktuelle PDF an."""
+        from PIL import Image
+        # Auf 300 DPI skalieren (A4 ~ 2480x3508 px)
+        max_w, max_h = 2480, 3508
+        w, h = img.size
+        scale = min(max_w / w, max_h / h, 1.0)
+        if scale < 1.0:
+            new_w, new_h = int(w * scale), int(h * scale)
+            img = img.resize((new_w, new_h), Image.LANCZOS)
+
+        # Bild im RGB-Format
+        if img.mode != "RGB":
+            img = img.convert("RGB")
+
+        # Bisheriges PDF (Seite 0) + neue Seite als zweites Bild
+        if not self.pdf_image:
+            # Noch kein PDF geladen – Bild als neue Seite öffnen
+            self.pdf_image = img
+            self.page_count = 1
+            self.current_page = 0
+            self.fields = {"0": []}
+            self.stamps = {"0": []}
+            self.arrows = {"0": []}
+            self.rects = {"0": []}
+            self.lines = {"0": []}
+            self.ellipses = {"0": []}
+            self.masks = {"0": []}
+            self.highlighters = {"0": []}
+            self.pdf_path = None
+            self._fit_zoom()
+            self._render()
+            self._status()
+            self._status_text("Bild als neue Seite geladen")
+            return
+
+        # Es gibt schon ein PDF – neue Seite dranhängen
+        # Aktuelle Seite merken
+        old_page = self.current_page
+        old_fields = dict(self.fields)
+        old_stamps = dict(self.stamps)
+        old_arrows = dict(self.arrows)
+        old_rects = dict(self.rects)
+        old_lines = dict(self.lines)
+        old_ellipses = dict(self.ellipses)
+        old_masks = dict(self.masks)
+        old_highlighters = dict(self.highlighters)
+
+        # Neue Seite als Index neben dem geladenen PDF
+        new_idx = old_page + 1  # nach aktueller Seite einfügen
+
+        # Verschieben: alles ab new_idx um 1 nach hinten
+        def _shift(d, start):
+            items = sorted(d.items(), key=lambda x: int(x[0]))
+            new_d = {}
+            for k, v in items:
+                k_int = int(k)
+                if k_int >= new_idx:
+                    new_d[str(k_int + 1)] = v
+                else:
+                    new_d[k] = v
+            return new_d
+
+        self.fields = _shift(old_fields, new_idx)
+        self.stamps = _shift(old_stamps, new_idx)
+        self.arrows = _shift(old_arrows, new_idx)
+        self.rects = _shift(old_rects, new_idx)
+        self.lines = _shift(old_lines, new_idx)
+        self.ellipses = _shift(old_ellipses, new_idx)
+        self.masks = _shift(old_masks, new_idx)
+        self.highlighters = _shift(old_highlighters, new_idx)
+
+        # Neue Seite einfügen
+        key = str(new_idx)
+        self.fields[key] = []
+        self.stamps[key] = []
+        self.arrows[key] = []
+        self.rects[key] = []
+        self.lines[key] = []
+        self.ellipses[key] = []
+        self.masks[key] = []
+        self.highlighters[key] = []
+
+        self.page_count += 1
+
+        # Alte Bilder als Liste speichern (page_images)
+        if not hasattr(self, "page_images"):
+            self.page_images = {str(old_page): self.pdf_image.copy()}
+        self.page_images[key] = img.copy()
+
+        # Zur neuen Seite springen
+        self.current_page = new_idx
+        self.pdf_image = img.copy()
+        self._fit_zoom()
+        self._render()
+        self._status()
+        self._status_text(f"Seite {new_idx + 1} hinzugefügt (Scan/Bild)")
 
     def _reset(self):
         self._stop_typing()
