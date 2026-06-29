@@ -2202,6 +2202,29 @@ class App:
     def _build_pdf(self) -> str:
         if not self.pdf_image: raise ValueError("Kein PDF")
         img = self.pdf_image.copy()
+
+        # 1) Textmarker zuerst als Alpha-Overlay (muss vor allem anderen kommen,
+        #    da es das Bild nach RGBA konvertiert)
+        if self._current_highlighters():
+            try:
+                from PIL import Image as PILImage, ImageDraw as PILDraw, ImageColor
+                pw, ph = img.width, img.height
+                overlay = PILImage.new("RGBA", (pw, ph), (0, 0, 0, 0))
+                od = PILDraw.Draw(overlay)
+                for h in self._current_highlighters():
+                    r, g, b = ImageColor.getrgb(h.color)[:3]
+                    a = int(max(0, min(255, h.opacity * 255)))
+                    od.rectangle([(h.x1, h.y1), (h.x2, h.y2)],
+                                 fill=(r, g, b, a), width=0)
+                if img.mode == "RGBA":
+                    img = PILImage.alpha_composite(img, overlay)
+                else:
+                    img = img.convert("RGBA")
+                    img = PILImage.alpha_composite(img, overlay)
+            except Exception as e:
+                print(f"Textmarker-PDF-Fehler: {e}")
+
+        # Jetzt wieder ein ImageDraw aufmachen (auch auf RGBA)
         d = ImageDraw.Draw(img)
 
         for f in self._current_fields():
@@ -2226,27 +2249,6 @@ class App:
                 # ✓ aus zwei Linien: unten-links → mitte → oben-rechts
                 d.line([(cx - s*2, cy), (cx - s*0.5, cy + s*1.5), (cx + s*2, cy - s*1.5)],
                        fill=(0,0,0), width=max(2, int(s*0.6)))
-
-        # Textmarker auf PDF malen (separates Alpha-Overlay)
-        if self._current_highlighters():
-            try:
-                from PIL import Image as PILImage, ImageDraw as PILDraw
-                pw, ph = img.width, img.height
-                overlay = PILImage.new("RGBA", (pw, ph), (0, 0, 0, 0))
-                od = PILDraw.Draw(overlay)
-                for h in self._current_highlighters():
-                    from PIL import ImageColor
-                    r, g, b = ImageColor.getrgb(h.color)
-                    a = int(max(0, min(255, h.opacity * 255)))
-                    od.rectangle([(h.x1, h.y1), (h.x2, h.y2)],
-                                 fill=(r, g, b, a), width=0)
-                if img.mode == "RGBA":
-                    img = PILImage.alpha_composite(img, overlay)
-                else:
-                    img = img.convert("RGBA")
-                    img = PILImage.alpha_composite(img, overlay)
-            except Exception as e:
-                print(f"Textmarker-PDF-Fehler: {e}")
 
         # Stempel auf PDF malen
         for s in self._current_stamps():
@@ -2299,6 +2301,13 @@ class App:
                 print(f"Masken-PDF-Fehler: {e}")
 
         tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
+        # PDF mag kein RGBA — zurück nach RGB
+        if img.mode == "RGBA":
+            bg = Image.new("RGB", img.size, (255, 255, 255))
+            bg.paste(img, mask=img.split()[3])
+            img = bg
+        elif img.mode != "RGB":
+            img = img.convert("RGB")
         img.save(tmp.name, "PDF", resolution=300)
         return tmp.name
 
