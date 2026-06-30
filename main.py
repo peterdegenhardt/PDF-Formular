@@ -818,13 +818,15 @@ class App:
         color_et.pack(side=tk.RIGHT, padx=(0,0))
 
         def on_ok():
-            print(f"[DEBUG] Schrift-Dialog OK: font_name={font_var.get()}, font_size={size_var.get()}, color={color_var.get()}")
             self.font_name = font_var.get()
             self.font_size = size_var.get()
             self.font_color = color_var.get()
             self.line_height = max(10, int(self.font_size * SCALE))
             self.export_font = get_font(self.font_size, self.font_name)
-            print(f"[DEBUG] Nach Übernahme: font_size={self.font_size}, line_height={self.line_height}, export_font={self.export_font}")
+            # Alle Felder der aktuellen Seite auf neue Größe updaten
+            for f in self._current_fields():
+                if f.type == "text":
+                    f.font_size = self.font_size
             self._render()
             self._status()
             win.destroy()
@@ -1485,7 +1487,6 @@ class App:
             fs = max(8, int(pt * SCALE * z * 0.8))
             txt = str(f.value)
             fc = self.font_color if self.font_color else "#000000"
-            print(f"[DEBUG _draw] f.value={f.value!r}, f.type={f.type}, font_size={self.font_size}, pt={pt}, z={z:.2f}, SCALE={SCALE}, fs={fs}")
             # SW-Anker = unten links, y = y2 setzt die Baseline auf Feld-Unterkante
             # So ragen Unterlängen (g,j,p,q,y) nach unten raus wie bei PIL
             y_base = y2 - 1
