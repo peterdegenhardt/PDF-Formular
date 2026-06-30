@@ -428,7 +428,7 @@ class App:
         self.btn_open = tk.Button(self._tb, text="📂 ÖFFNEN", font=("Segoe UI",9,"bold"),
                                  bg=C["accent"], fg="#11111b", activebackground=C["accent"],
                                  activeforeground="#11111b", relief=tk.FLAT, bd=2,
-                                 pady=4, padx=10, cursor="hand2",
+                                 pady=4, padx=4, width=10, cursor="hand2",
                                  command=self._show_open_menu)
         self.btn_open.pack(side=tk.LEFT, padx=1)
 
@@ -436,33 +436,33 @@ class App:
         self.btn_save = tk.Button(self._tb, text="💾 SPEICHERN", font=("Segoe UI",9,"bold"),
                                  bg=C["green"], fg="#11111b", activebackground=C["green"],
                                  activeforeground="#11111b", relief=tk.FLAT, bd=2,
-                                 pady=4, padx=10, cursor="hand2",
+                                 pady=4, padx=4, width=10, cursor="hand2",
                                  command=self._show_save_menu)
         self.btn_save.pack(side=tk.LEFT, padx=1)
         self._add_sep()
 
         # --- Modus ---
-        self.btn_fill = self._btn(self._tb, "Ausfüllen", lambda: self._set_mode("fill"), C["green"])
-        self.btn_edit = self._btn(self._tb, "Editor", lambda: self._set_mode("edit"), C["status"])
+        self.btn_fill = self._btn(self._tb, "Ausfüllen", lambda: self._set_mode("fill"), C["green"], w=8)
+        self.btn_edit = self._btn(self._tb, "Editor", lambda: self._set_mode("edit"), C["status"], w=8)
         self._add_sep()
 
         # --- Rahmen/Höhe/Raster/Lineal ---
-        self.btn_frame = self._btn(self._tb, "Rahmen", self._toggle_frames, C["yellow"])
-        self.btn_ruler = self._btn(self._tb, "Lineal", self._toggle_ruler, C["yellow"])
-        self._btn(self._tb, "Höhe", self._set_height_dialog, C["yellow"])
-        self._btn(self._tb, "Raster", self._set_grid_dialog, C["yellow"])
-        self._btn(self._tb, "Schrift", self._font_dialog, C["cyan"])
+        self.btn_frame = self._btn(self._tb, "Rahmen", self._toggle_frames, C["yellow"], w=8)
+        self.btn_ruler = self._btn(self._tb, "Lineal", self._toggle_ruler, C["yellow"], w=8)
+        self._btn(self._tb, "Höhe", self._set_height_dialog, C["yellow"], w=8)
+        self._btn(self._tb, "Raster", self._set_grid_dialog, C["yellow"], w=8)
+        self._btn(self._tb, "Schrift", self._font_dialog, C["cyan"], w=8)
         self._add_sep()
 
         # --- Drucken / Zoom ---
-        self._btn(self._tb, "Drucken", self._print_pdf, C["yellow"])
+        self._btn(self._tb, "Drucken", self._print_pdf, C["yellow"], w=8)
         self._btn(self._tb, "−", lambda: self._do_zoom(0.8), C["status"], fg="#11111b")
         self._btn(self._tb, "+", lambda: self._do_zoom(1.25), C["status"], fg="#11111b")
         self._btn(self._tb, "1:1", self._zoom_reset, C["status"], fg="#11111b")
         self._add_sep()
 
         # --- Reset ---
-        self._btn(self._tb, "Zurücksetzen", self._reset, C["red"])
+        self._btn(self._tb, "Zurücksetzen", self._reset, C["red"], w=8)
 
         # --- Seiten-Navigation (rechtsbündig) ---
         self.page_label = tk.Label(self._tb, text="Seite ? / ?", font=("Segoe UI",9,"bold"),
