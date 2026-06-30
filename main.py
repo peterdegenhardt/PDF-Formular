@@ -526,7 +526,7 @@ class App:
                 print(f"Icon fehlt: {iname}.png in icons/")
 
         # ─── Toolbox links (flach, Icon + Text nebeneinander) ──
-        self.toolbox = tk.Frame(self.root, bg=C["bg"], width=180)
+        self.toolbox = tk.Frame(self.root, bg=C["bg"], width=150)
         self.toolbox.pack(side=tk.LEFT, fill=tk.Y, padx=(4,0), pady=2)
         self.toolbox.pack_propagate(False)
 
