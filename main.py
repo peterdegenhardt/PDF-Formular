@@ -462,7 +462,7 @@ class App:
         self._add_sep()
 
         # --- Reset ---
-        self._btn(self._tb, "Zurücksetzen", self._reset, C["red"], w=8)
+        self._btn(self._tb, "Zurücksetzen", self._reset, C["red"], w=11)
 
         # --- Seiten-Navigation (rechtsbündig) ---
         self.page_label = tk.Label(self._tb, text="Seite ? / ?", font=("Segoe UI",9,"bold"),
@@ -526,7 +526,7 @@ class App:
                 print(f"Icon fehlt: {iname}.png in icons/")
 
         # ─── Toolbox links (flach, Icon + Text nebeneinander) ──
-        self.toolbox = tk.Frame(self.root, bg=C["bg"], width=130)
+        self.toolbox = tk.Frame(self.root, bg=C["bg"], width=100)
         self.toolbox.pack(side=tk.LEFT, fill=tk.Y, padx=(2,0), pady=2)
         self.toolbox.pack_propagate(False)
 
