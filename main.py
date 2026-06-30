@@ -526,8 +526,8 @@ class App:
                 print(f"Icon fehlt: {iname}.png in icons/")
 
         # ─── Toolbox links (flach, Icon + Text nebeneinander) ──
-        self.toolbox = tk.Frame(self.root, bg=C["bg"], width=150)
-        self.toolbox.pack(side=tk.LEFT, fill=tk.Y, padx=(4,0), pady=2)
+        self.toolbox = tk.Frame(self.root, bg=C["bg"], width=130)
+        self.toolbox.pack(side=tk.LEFT, fill=tk.Y, padx=(2,0), pady=2)
         self.toolbox.pack_propagate(False)
 
         self.toolbox_inner = tk.Frame(self.toolbox, bg=C["bg"])
@@ -546,14 +546,14 @@ class App:
 
         # ─── Hilfsfunktion für flache, Dark-Theme-konforme Button Config ──
         def _toolbox_btn(container, icon_img, text, tip_text, cmd):
-            """Button mit Icon links + Text rechts, flach, kein 3D."""
+            """Button mit Icon links + Text rechts, flach, kein 3D, kein Fokus-Rahmen."""
             btn = tk.Button(container, image=icon_img, compound=tk.LEFT,
                           text=text, anchor="w", justify=tk.LEFT,
-                          padx=6, pady=4,
+                          padx=4, pady=3,
                           bg=C["bg"], fg=C["text"],
                           activebackground=C["accent"],
                           activeforeground="#11111b",
-                          relief=tk.FLAT, bd=0, highlightthickness=0,
+                          relief=tk.FLAT, bd=0, highlightthickness=0, takefocus=0,
                           cursor="hand2",
                           font=("Segoe UI", 9))
             btn.pack(pady=(0,1), fill=tk.X, padx=1)
@@ -582,7 +582,7 @@ class App:
                               bg=C["bg"], fg=C["dim"],
                               activebackground=C["accent"],
                               activeforeground="#11111b",
-                              relief=tk.FLAT, bd=0, highlightthickness=0,
+                              relief=tk.FLAT, bd=0, highlightthickness=0, takefocus=0,
                               cursor="hand2",
                               font=("Segoe UI", 9),
                               command=lambda n=name: self._set_tool(n))
@@ -597,11 +597,11 @@ class App:
                                 image=img_datum if img_datum else tk.PhotoImage(),
                                 compound=tk.LEFT,
                                 text="Datum", anchor="w", justify=tk.LEFT,
-                                padx=6, pady=4,
+                                padx=4, pady=3,
                                 bg=C["bg"], fg=C["text"],
                                 activebackground=C["accent"],
                                 activeforeground="#11111b",
-                                relief=tk.FLAT, bd=0, highlightthickness=0,
+                                relief=tk.FLAT, bd=0, highlightthickness=0, takefocus=0,
                                 cursor="hand2",
                                 font=("Segoe UI", 9),
                                 command=self._insert_date)
