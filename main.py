@@ -553,7 +553,7 @@ class App:
                           bg=C["bg"], fg=C["text"],
                           activebackground=C["accent"],
                           activeforeground="#11111b",
-                          relief=tk.FLAT, bd=0,
+                          relief=tk.FLAT, bd=0, highlightthickness=0,
                           cursor="hand2",
                           font=("Segoe UI", 9))
             btn.pack(pady=(0,1), fill=tk.X, padx=1)
@@ -582,7 +582,7 @@ class App:
                               bg=C["bg"], fg=C["dim"],
                               activebackground=C["accent"],
                               activeforeground="#11111b",
-                              relief=tk.FLAT, bd=0,
+                              relief=tk.FLAT, bd=0, highlightthickness=0,
                               cursor="hand2",
                               font=("Segoe UI", 9),
                               command=lambda n=name: self._set_tool(n))
@@ -601,7 +601,7 @@ class App:
                                 bg=C["bg"], fg=C["text"],
                                 activebackground=C["accent"],
                                 activeforeground="#11111b",
-                                relief=tk.FLAT, bd=0,
+                                relief=tk.FLAT, bd=0, highlightthickness=0,
                                 cursor="hand2",
                                 font=("Segoe UI", 9),
                                 command=self._insert_date)
