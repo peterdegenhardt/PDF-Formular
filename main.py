@@ -428,7 +428,7 @@ class App:
         self.btn_open = tk.Button(self._tb, text="📂 ÖFFNEN", font=("Segoe UI",9,"bold"),
                                  bg=C["accent"], fg="#11111b", activebackground=C["accent"],
                                  activeforeground="#11111b", relief=tk.FLAT, bd=2,
-                                 pady=4, padx=4, width=10, cursor="hand2",
+                                 pady=4, padx=4, width=12, cursor="hand2",
                                  command=self._show_open_menu)
         self.btn_open.pack(side=tk.LEFT, padx=1)
 
@@ -436,7 +436,7 @@ class App:
         self.btn_save = tk.Button(self._tb, text="💾 SPEICHERN", font=("Segoe UI",9,"bold"),
                                  bg=C["green"], fg="#11111b", activebackground=C["green"],
                                  activeforeground="#11111b", relief=tk.FLAT, bd=2,
-                                 pady=4, padx=4, width=10, cursor="hand2",
+                                 pady=4, padx=4, width=12, cursor="hand2",
                                  command=self._show_save_menu)
         self.btn_save.pack(side=tk.LEFT, padx=1)
         self._add_sep()
