@@ -525,8 +525,8 @@ class App:
             else:
                 print(f"Icon fehlt: {iname}.png in icons/")
 
-        # ─── Toolbox links ─────────────────────────────────────
-        self.toolbox = tk.Frame(self.root, bg=C["bg"], width=48)
+        # ─── Toolbox links (breiter, mit Beschriftung, Dark-Theme-konform) ──
+        self.toolbox = tk.Frame(self.root, bg=C["bg"], width=92)
         self.toolbox.pack(side=tk.LEFT, fill=tk.Y, padx=(4,0), pady=4)
         self.toolbox.pack_propagate(False)
 
@@ -544,52 +544,96 @@ class App:
             ("foto", "Bild einfügen", "Foto/Bild als neue Seite einfügen"),
         ]
 
+        # ─── Hilfsfunktion für Dark-Theme-konforme Button Style-Config ──
+        def _theme_button_cfg(bg=C["bg"], fg=C["text"]):
+            return {
+                "bg": bg,
+                "fg": fg,
+                "activebackground": C["accent"],
+                "activeforeground": "#11111b",
+                "relief": tk.RAISED,
+                "bd": 2,
+                "cursor": "hand2",
+            }
+
+        def _make_toolbox_btn(container, icon_img, label_text, tip_text, cmd):
+            """Erzeugt einen Toolbox-Button mit Icon oben + Label darunter."""
+            btn_frame = tk.Frame(container, bg=C["bg"])
+            btn_frame.pack(pady=(0,3), fill=tk.X, padx=2)
+
+            btn = tk.Button(btn_frame, image=icon_img, compound=tk.TOP,
+                          **_theme_button_cfg())
+            btn.pack(fill=tk.X, pady=0)
+            self._attach_tooltip(btn, tip_text)
+
+            # Label unter dem Button
+            lbl = tk.Label(btn_frame, text=label_text,
+                          bg=C["bg"], fg=C["text"],
+                          font=("Segoe UI", 7))
+            lbl.pack(fill=tk.X)
+            # Hover: Label-Hintergrund mitziehen
+            def btn_enter(e, b=btn, l=lbl):
+                if b.cget("bg") != C["accent"]:
+                    b.configure(bg="#585b70")
+                    l.configure(bg="#585b70")
+            def btn_leave(e, b=btn, l=lbl):
+                if b.cget("bg") != C["accent"]:
+                    b.configure(bg=C["bg"])
+                    l.configure(bg=C["bg"])
+            btn.bind("<Enter>", btn_enter)
+            btn.bind("<Leave>", btn_leave)
+            lbl.bind("<Enter>", btn_enter)
+            lbl.bind("<Leave>", btn_leave)
+
+            btn.configure(command=cmd)
+            return btn, btn_frame
+
         self._tool_buttons = {}
         for ikey, name, tip in werkzeuge:
             img = self._icons_png.get(ikey)
-            txt = {"Textmarker": "🖍️", "Bild einfügen": "🖼️"}.get(name, "")
+            label_text = {"Textmarker": "Marker", "Bild einfügen": "Foto"}.get(name, name)
             if img:
-                btn = tk.Button(self.toolbox_inner, image=img,
-                              bg=C["bg"],
-                              activebackground="#89b4fa",
-                              relief=tk.RAISED, bd=2, pady=4, padx=2,
-                              cursor="hand2",
-                              command=lambda n=name: self._set_tool(n))
+                btn, _ = _make_toolbox_btn(
+                    self.toolbox_inner, img, label_text, tip,
+                    lambda n=name: self._set_tool(n))
             else:
-                btn = tk.Button(self.toolbox_inner, text=txt or name[0],
-                              bg=C["bg"],
-                              activebackground="#89b4fa",
-                              relief=tk.RAISED, bd=2, pady=4, padx=2,
-                              cursor="hand2", font=("Segoe UI", 12),
-                              command=lambda n=name: self._set_tool(n))
-            btn.pack(pady=(0,2), fill=tk.X, padx=2)
+                btn = tk.Button(self.toolbox_inner, text=name[0],
+                              **_theme_button_cfg(fg=C["dim"]),
+                              font=("Segoe UI", 14))
+                btn.pack(pady=(0,2), fill=tk.X, padx=2)
+                btn.configure(command=lambda n=name: self._set_tool(n))
             self._tool_buttons[name] = btn
-            self._attach_tooltip(btn, tip)
-            # Hover per Event-Binding
-            def on_enter(e, b=btn):
-                if b.cget("bg") != C["accent"]: b.configure(bg="#89b4fa")
-            def on_leave(e, b=btn):
-                if b.cget("bg") != C["accent"]: b.configure(bg=C["bg"])
-            btn.bind("<Enter>", on_enter)
-            btn.bind("<Leave>", on_leave)
             if name in ("Linie", "Pfeil", "Rechteck", "Ellipse", "Maske", "Textmarker"):
                 btn.bind("<Button-3>", lambda e, n=name: self._tool_settings_dialog(n))
 
+        # ─── Datum-Button ─────────────────────────────────────────
         img_datum = self._icons_png.get("datum")
-        self.btn_date = tk.Button(self.toolbox_inner, image=img_datum if img_datum else "",
-                                bg=C["bg"],
-                                activebackground="#89b4fa",
-                                relief=tk.RAISED, bd=2, pady=4, padx=2,
-                                cursor="hand2",
+        btn_date_frame = tk.Frame(self.toolbox_inner, bg=C["bg"])
+        btn_date_frame.pack(pady=(8,2), fill=tk.X, padx=2)
+
+        self.btn_date = tk.Button(btn_date_frame,
+                                image=img_datum if img_datum else tk.PhotoImage(),
+                                compound=tk.TOP,
+                                **_theme_button_cfg(),
                                 command=self._insert_date)
-        self.btn_date.pack(pady=(8,2), fill=tk.X, padx=2)
+        self.btn_date.pack(fill=tk.X, pady=0)
         self._attach_tooltip(self.btn_date, "Aktuelles Datum einfügen (TT.MM.JJJJ)")
-        def dt_enter(e):
-            if self.btn_date.cget("bg") != C["accent"]: self.btn_date.configure(bg="#89b4fa")
-        def dt_leave(e):
-            if self.btn_date.cget("bg") != C["accent"]: self.btn_date.configure(bg=C["bg"])
+        dt_lbl = tk.Label(btn_date_frame, text="Datum",
+                         bg=C["bg"], fg=C["text"],
+                         font=("Segoe UI", 7))
+        dt_lbl.pack(fill=tk.X)
+        def dt_enter(e, b=self.btn_date, l=dt_lbl):
+            if b.cget("bg") != C["accent"]:
+                b.configure(bg="#585b70")
+                l.configure(bg="#585b70")
+        def dt_leave(e, b=self.btn_date, l=dt_lbl):
+            if b.cget("bg") != C["accent"]:
+                b.configure(bg=C["bg"])
+                l.configure(bg=C["bg"])
         self.btn_date.bind("<Enter>", dt_enter)
         self.btn_date.bind("<Leave>", dt_leave)
+        dt_lbl.bind("<Enter>", dt_enter)
+        dt_lbl.bind("<Leave>", dt_leave)
 
         self.toolbox_filler = tk.Frame(self.toolbox_inner, bg=C["bg"])
         self.toolbox_filler.pack(fill=tk.BOTH, expand=True)
