@@ -549,11 +549,11 @@ class App:
             """Button mit Icon links + Text rechts, flach, kein 3D, kein Fokus-Rahmen."""
             btn = tk.Button(container, image=icon_img, compound=tk.LEFT,
                           text=text, anchor="w", justify=tk.LEFT,
-                          padx=4, pady=3,
+                          padx=4, pady=2,
                           bg=C["bg"], fg=C["text"],
                           activebackground=C["accent"],
                           activeforeground="#11111b",
-                          relief=tk.FLAT, bd=0, highlightthickness=0, takefocus=0,
+                          relief=tk.FLAT, bd=0, borderwidth=0, highlightthickness=0, takefocus=0,
                           cursor="hand2",
                           font=("Segoe UI", 9))
             btn.pack(pady=(0,1), fill=tk.X, padx=1)
@@ -582,7 +582,7 @@ class App:
                               bg=C["bg"], fg=C["dim"],
                               activebackground=C["accent"],
                               activeforeground="#11111b",
-                              relief=tk.FLAT, bd=0, highlightthickness=0, takefocus=0,
+                              relief=tk.FLAT, bd=0, borderwidth=0, highlightthickness=0, takefocus=0,
                               cursor="hand2",
                               font=("Segoe UI", 9),
                               command=lambda n=name: self._set_tool(n))
@@ -593,19 +593,32 @@ class App:
 
         # ─── Datum-Button ─────────────────────────────────────────
         img_datum = self._icons_png.get("datum")
-        self.btn_date = tk.Button(self.toolbox_inner,
-                                image=img_datum if img_datum else tk.PhotoImage(),
-                                compound=tk.LEFT,
-                                text="Datum", anchor="w", justify=tk.LEFT,
-                                padx=4, pady=3,
-                                bg=C["bg"], fg=C["text"],
-                                activebackground=C["accent"],
-                                activeforeground="#11111b",
-                                relief=tk.FLAT, bd=0, highlightthickness=0, takefocus=0,
-                                cursor="hand2",
-                                font=("Segoe UI", 9),
-                                command=self._insert_date)
-        self.btn_date.pack(pady=(6,1), fill=tk.X, padx=1)
+        if img_datum:
+            self.btn_date = tk.Button(self.toolbox_inner,
+                                    image=img_datum, compound=tk.LEFT,
+                                    text="Datum", anchor="w", justify=tk.LEFT,
+                                    padx=4, pady=2,
+                                    bg=C["bg"], fg=C["text"],
+                                    activebackground=C["accent"],
+                                    activeforeground="#11111b",
+                                    relief=tk.FLAT, bd=0, borderwidth=0,
+                                    highlightthickness=0, takefocus=0,
+                                    cursor="hand2",
+                                    font=("Segoe UI", 9),
+                                    command=self._insert_date)
+        else:
+            self.btn_date = tk.Button(self.toolbox_inner,
+                                    text="📅 Datum", anchor="w", justify=tk.LEFT,
+                                    padx=4, pady=2,
+                                    bg=C["bg"], fg=C["text"],
+                                    activebackground=C["accent"],
+                                    activeforeground="#11111b",
+                                    relief=tk.FLAT, bd=0, borderwidth=0,
+                                    highlightthickness=0, takefocus=0,
+                                    cursor="hand2",
+                                    font=("Segoe UI", 9),
+                                    command=self._insert_date)
+        self.btn_date.pack(pady=(4,1), fill=tk.X, padx=1)
         self._attach_tooltip(self.btn_date, "Aktuelles Datum einfügen (TT.MM.JJJJ)")
         def dt_enter(e):
             if self.btn_date.cget("bg") != C["accent"]:
