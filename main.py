@@ -818,11 +818,13 @@ class App:
         color_et.pack(side=tk.RIGHT, padx=(0,0))
 
         def on_ok():
+            print(f"[DEBUG] Schrift-Dialog OK: font_name={font_var.get()}, font_size={size_var.get()}, color={color_var.get()}")
             self.font_name = font_var.get()
             self.font_size = size_var.get()
             self.font_color = color_var.get()
             self.line_height = max(10, int(self.font_size * SCALE))
             self.export_font = get_font(self.font_size, self.font_name)
+            print(f"[DEBUG] Nach Übernahme: font_size={self.font_size}, line_height={self.line_height}, export_font={self.export_font}")
             self._render()
             self._status()
             win.destroy()
