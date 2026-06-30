@@ -632,14 +632,16 @@ class App:
         self.toolbox_filler = tk.Frame(self.toolbox_inner, bg=C["bg"])
         self.toolbox_filler.pack(fill=tk.BOTH, expand=True)
 
-        self.btn_exit = tk.Button(self.toolbox, text="❌", font=("Segoe UI",14),
+        self.btn_exit = tk.Button(self.toolbox, text="🚪 Beenden", font=("Segoe UI",9),
+                                anchor="w", justify=tk.LEFT,
+                                padx=6, pady=4,
                                 bg=C["red"], fg="#11111b",
                                 activebackground="#c0392b", activeforeground="#11111b",
-                                relief=tk.FLAT, bd=2, pady=6, padx=0,
+                                relief=tk.FLAT, bd=0, borderwidth=0, highlightthickness=0, takefocus=0,
                                 cursor="hand2",
                                 command=self._exit_app)
-        self.btn_exit.pack(side=tk.BOTTOM, pady=(0,6), fill=tk.X, padx=2)
-        self._attach_tooltip(self.btn_exit, "Beenden")
+        self.btn_exit.pack(side=tk.BOTTOM, pady=(4,4), fill=tk.X, padx=4)
+        self._attach_tooltip(self.btn_exit, "Programm beenden")
 
         # ─── Canvas-Bereich ────────────────────────────────────
         self.mf = tk.Frame(self.root, bg=C["canvas"])
