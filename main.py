@@ -948,12 +948,26 @@ class App:
             # Toolbox einfärben
             if hasattr(self, 'toolbox'):
                 self.toolbox.configure(bg=C["bg"])
+                self.toolbox_inner.configure(bg=C["bg"])
                 self.toolbox_filler.configure(bg=C["bg"])
                 for n, btn in self._tool_buttons.items():
                     if n == self.selected_tool:
-                        btn.configure(bg=C["accent"], fg="#11111b", relief=tk.RAISED)
+                        btn.configure(bg=C["accent"], fg="#11111b",
+                                      relief=tk.FLAT, bd=0, borderwidth=0,
+                                      highlightthickness=0)
                     else:
-                        btn.configure(bg=C["bg"], fg=C["text"], relief=tk.RAISED)
+                        btn.configure(bg=C["bg"], fg=C["text"],
+                                      relief=tk.FLAT, bd=0, borderwidth=0,
+                                      highlightthickness=0)
+                if hasattr(self, 'btn_date'):
+                    if self.selected_tool == "Datum":
+                        self.btn_date.configure(bg=C["accent"], fg="#11111b",
+                                                relief=tk.FLAT, bd=0, borderwidth=0,
+                                                highlightthickness=0)
+                    else:
+                        self.btn_date.configure(bg=C["bg"], fg=C["text"],
+                                                relief=tk.FLAT, bd=0, borderwidth=0,
+                                                highlightthickness=0)
             # Page-Label einfärben
             if hasattr(self, 'page_label'):
                 self.page_label.configure(bg=C["bg"], fg=C["text"])
