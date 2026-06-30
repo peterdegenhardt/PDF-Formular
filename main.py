@@ -355,7 +355,7 @@ class App:
     def _btn(self, p, t, c, bg, s=tk.LEFT, fg="#11111b", w=0, tip=""):
         b = tk.Button(p, text=t, font=("Segoe UI",9,"bold"), bg=bg, fg=fg,
                      activebackground=C["accent"], activeforeground="#11111b",
-                     relief=tk.RAISED, bd=2, pady=4, padx=6, width=w, cursor="hand2", command=c)
+                     relief=tk.FLAT, bd=2, pady=4, padx=6, width=w, cursor="hand2", command=c)
         b.pack(side=s, padx=1); self._tb_children.append(b)
         if tip:
             self._attach_tooltip(b, tip)
@@ -427,7 +427,7 @@ class App:
         # --- 📂 ÖFFNEN (Dropdown) ---
         self.btn_open = tk.Button(self._tb, text="📂 ÖFFNEN", font=("Segoe UI",9,"bold"),
                                  bg=C["accent"], fg="#11111b", activebackground=C["accent"],
-                                 activeforeground="#11111b", relief=tk.RAISED, bd=2,
+                                 activeforeground="#11111b", relief=tk.FLAT, bd=2,
                                  pady=4, padx=10, cursor="hand2",
                                  command=self._show_open_menu)
         self.btn_open.pack(side=tk.LEFT, padx=1)
@@ -435,7 +435,7 @@ class App:
         # --- 💾 SPEICHERN (Dropdown) ---
         self.btn_save = tk.Button(self._tb, text="💾 SPEICHERN", font=("Segoe UI",9,"bold"),
                                  bg=C["green"], fg="#11111b", activebackground=C["green"],
-                                 activeforeground="#11111b", relief=tk.RAISED, bd=2,
+                                 activeforeground="#11111b", relief=tk.FLAT, bd=2,
                                  pady=4, padx=10, cursor="hand2",
                                  command=self._show_save_menu)
         self.btn_save.pack(side=tk.LEFT, padx=1)
@@ -635,7 +635,7 @@ class App:
         self.btn_exit = tk.Button(self.toolbox, text="❌", font=("Segoe UI",14),
                                 bg=C["red"], fg="#11111b",
                                 activebackground="#c0392b", activeforeground="#11111b",
-                                relief=tk.RAISED, bd=2, pady=6, padx=0,
+                                relief=tk.FLAT, bd=2, pady=6, padx=0,
                                 cursor="hand2",
                                 command=self._exit_app)
         self.btn_exit.pack(side=tk.BOTTOM, pady=(0,6), fill=tk.X, padx=2)
@@ -683,9 +683,9 @@ class App:
         # Buttons visuell hervorheben — 3D, aktiv = accent hinterlegt
         for n, btn in self._tool_buttons.items():
             if n == name:
-                btn.configure(bg=C["accent"], fg="#11111b", relief=tk.RAISED)
+                btn.configure(bg=C["accent"], fg="#11111b", relief=tk.FLAT)
             else:
-                btn.configure(bg=C["bg"], fg=C["text"], relief=tk.RAISED)
+                btn.configure(bg=C["bg"], fg=C["text"], relief=tk.FLAT)
         self._status()
 
     def _set_height_dialog(self):
@@ -806,7 +806,7 @@ class App:
         colors = ["#000000", "#333333", "#666666", "#990000", "#cc0000",
                   "#006600", "#000099", "#663300", "#800080", "#cc6600"]
         for c in colors:
-            btn = tk.Button(color_frame, bg=c, width=2, bd=1, relief=tk.RAISED,
+            btn = tk.Button(color_frame, bg=c, width=2, bd=1, relief=tk.FLAT,
                           command=lambda cv=c: color_var.set(cv),
                           activebackground=c)
             btn.pack(side=tk.LEFT, padx=2, pady=2)
@@ -928,7 +928,7 @@ class App:
                     vars_[k].set(farbe[1])  # Hex-Wert
                     previews[k].configure(bg=farbe[1])
             previews[key] = tk.Label(inp_frame, bg=C[key], width=6, height=1,
-                                    relief=tk.RAISED, bd=3, cursor="hand2")
+                                    relief=tk.FLAT, bd=3, cursor="hand2")
             previews[key].grid(row=row, column=1, padx=4, pady=4, sticky=tk.W)
             previews[key].bind("<Button-1>", lambda e, k=key: pick_color(k))
             tk.Label(inp_frame, textvariable=vars_[key], bg=C["bg"], fg=C["dim"],
@@ -1135,7 +1135,7 @@ class App:
         if self.selected_tool:
             self.selected_tool = None
             for n, btn in self._tool_buttons.items():
-                btn.configure(bg=C["bg"], fg=C["text"], relief=tk.RAISED)
+                btn.configure(bg=C["bg"], fg=C["text"], relief=tk.FLAT)
             self._status()
 
     def _set_mode(self, mode):
@@ -1144,7 +1144,7 @@ class App:
         # Werkzeug-Modus beim Modus-Wechsel zurücksetzen
         self.selected_tool = None
         for n, btn in self._tool_buttons.items():
-            btn.configure(bg=C["bg"], fg=C["text"], relief=tk.RAISED)
+            btn.configure(bg=C["bg"], fg=C["text"], relief=tk.FLAT)
         if mode == "fill":
             self.btn_fill.configure(bg=C["accent"], fg="#11111b")
             self.btn_edit.configure(bg=C["status"], fg=C["dim"])
@@ -1571,7 +1571,7 @@ class App:
             self._stempel_dialog(int(px), int(py))
             self.selected_tool = None
             for n, btn in self._tool_buttons.items():
-                btn.configure(bg=C["bg"], fg=C["text"], relief=tk.RAISED)
+                btn.configure(bg=C["bg"], fg=C["text"], relief=tk.FLAT)
             self._status()
             return
 
@@ -1932,7 +1932,7 @@ class App:
             # Tool-Modus zurücksetzen
             self.selected_tool = None
             for n, btn in self._tool_buttons.items():
-                btn.configure(bg=C["bg"], fg=C["text"], relief=tk.RAISED)
+                btn.configure(bg=C["bg"], fg=C["text"], relief=tk.FLAT)
         elif dm == "line" and e:
             px, py = self._ic(e)
             x1, y1 = self._line_start
@@ -3105,7 +3105,7 @@ class App:
             self._status()
 
         for text, color, name in Stamp.STANDARD_STEMPEL:
-            btn_frame = tk.Frame(frame, bg=color, bd=1, relief=tk.RAISED, cursor="hand2")
+            btn_frame = tk.Frame(frame, bg=color, bd=1, relief=tk.FLAT, cursor="hand2")
             btn_frame.pack(fill=tk.X, pady=3)
             btn_frame.bind("<Button-1>", lambda e, t=text, c=color: platziere(t, c))
 
