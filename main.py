@@ -1485,6 +1485,7 @@ class App:
             fs = max(8, int(pt * SCALE * z * 0.8))
             txt = str(f.value)
             fc = self.font_color if self.font_color else "#000000"
+            print(f"[DEBUG _draw] f.value={f.value!r}, f.type={f.type}, font_size={self.font_size}, pt={pt}, z={z:.2f}, SCALE={SCALE}, fs={fs}")
             # SW-Anker = unten links, y = y2 setzt die Baseline auf Feld-Unterkante
             # So ragen Unterlängen (g,j,p,q,y) nach unten raus wie bei PIL
             y_base = y2 - 1
