@@ -1598,20 +1598,37 @@ class App:
         self.active_field = None; self.typing = False; self._render()
 
     def _key(self, e):
-        if self.mode != "fill" or not self.active_field or self.active_field.type != "text": return
-        if e.keysym in ("Return","Escape"): self._stop_typing(); return
+        if self.mode != "fill":
+            return
+        if e.keysym == "Tab":
+            cur = self._current_fields()
+            # Shift+Tab = rückwärts
+            step = -1 if (e.state & 0x1) else 1  # Shift gedrückt?
+            if self.active_field and self.active_field.type == "text":
+                idx = cur.index(self.active_field)
+            else:
+                idx = -1 if step == 1 else len(cur)
+            for i in range(1, len(cur) + 1):
+                ni = (idx + i * step) % len(cur)
+                nf = cur[ni]
+                if nf.type == "text":
+                    self.active_field = nf
+                    self.typing = True
+                    self.cv.focus_set()
+                    self._render()
+                    self._status()
+                    return
+            self._status_text("Keine weiteren Textfelder")
+            return
+        if not self.active_field or self.active_field.type != "text":
+            return
+        if e.keysym in ("Return", "Escape"):
+            self._stop_typing()
+            return
         if e.keysym == "BackSpace":
             v = self.active_field.value
             self.active_field.value = v[:-1] if isinstance(v,str) else ""
             self._render(); return
-        if e.keysym == "Tab":
-            cur = self._current_fields()
-            idx = cur.index(self.active_field); self.active_field = None
-            for i in range(1, len(cur)):
-                nf = cur[(idx + i) % len(cur)]
-                if nf.type == "text": self.active_field = nf; break
-            if self.active_field: self._render(); self.cv.focus_set()
-            return
         if e.keysym == "Delete": self.active_field.value = ""; self._render(); return
         if e.char and e.char.isprintable() and len(e.char)==1:
             v = str(self.active_field.value) if self.active_field.value else ""
