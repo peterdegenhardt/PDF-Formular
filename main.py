@@ -369,7 +369,8 @@ class App:
     def _btn(self, p, t, c, bg, s=tk.LEFT, fg="#11111b", w=0, tip=""):
         b = tk.Button(p, text=t, font=("Segoe UI",9,"bold"), bg=bg, fg=fg,
                      activebackground=C["accent"], activeforeground="#11111b",
-                     relief=tk.FLAT, bd=2, pady=4, padx=6, width=w, cursor="hand2", command=c)
+                     relief=tk.FLAT, bd=2, pady=4, padx=6, width=w, cursor="hand2",
+                     takefocus=0, command=c)
         b.pack(side=s, padx=1); self._tb_children.append(b)
         if tip:
             self._attach_tooltip(b, tip)
@@ -443,6 +444,7 @@ class App:
                                  bg=C["accent"], fg="#11111b", activebackground=C["accent"],
                                  activeforeground="#11111b", relief=tk.FLAT, bd=2,
                                  pady=4, padx=4, width=12, cursor="hand2",
+                                 takefocus=0,
                                  command=self._show_open_menu)
         self.btn_open.pack(side=tk.LEFT, padx=1)
 
@@ -451,6 +453,7 @@ class App:
                                  bg=C["green"], fg="#11111b", activebackground=C["green"],
                                  activeforeground="#11111b", relief=tk.FLAT, bd=2,
                                  pady=4, padx=4, width=12, cursor="hand2",
+                                 takefocus=0,
                                  command=self._show_save_menu)
         self.btn_save.pack(side=tk.LEFT, padx=1)
         self._add_sep()
@@ -1617,9 +1620,10 @@ class App:
                     self.cv.focus_set()
                     self._render()
                     self._status()
-                    return
+                    return "break"
             self._status_text("Keine weiteren Textfelder")
-            return
+            # Trotzdem Tab unterdrücken, damit tkinter nicht zwischen Buttons springt
+            return "break"
         if not self.active_field or self.active_field.type != "text":
             return
         if e.keysym in ("Return", "Escape"):
