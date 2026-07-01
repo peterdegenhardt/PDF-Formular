@@ -291,6 +291,7 @@ class App:
         self.pdf_path = None
         self.page_count = 0
         self.current_page = 0
+        self.page_rotation = {}  # dict: {"0": 0, "1": 90, ...} — Drehung pro Seite
         self.fields = {}  # dict: {"0": [FieldRect, ...], "1": [...]}
         self.stamps = {}  # dict: {"0": [Stamp, ...], "1": [...]}
         self.arrows = {}  # dict: {"0": [Arrow, ...], "1": [...]}
@@ -464,6 +465,10 @@ class App:
         # --- Reset ---
         self._btn(self._tb, "Zurücksetzen", self._reset, C["red"], w=11)
 
+        # --- 90° Drehung ---
+        self._btn(self._tb, "\u21ba", lambda: self._rotate_page(-90), C["cyan"], fg="#11111b")
+        self._btn(self._tb, "\u21bb", lambda: self._rotate_page(90), C["cyan"], fg="#11111b")
+
         # --- Seiten-Navigation (rechtsbündig) ---
         self.page_label = tk.Label(self._tb, text="Seite ? / ?", font=("Segoe UI",9,"bold"),
                                    bg=C["bg"], fg=C["text"])
@@ -489,6 +494,8 @@ class App:
             "Zurücksetzen": "Alle ausgefüllten Werte löschen",
             "⬅": "Vorherige Seite",
             "➡": "Nächste Seite",
+            "↺": "Seite 90° gegen Uhrzeigersinn drehen",
+            "↻": "Seite 90° im Uhrzeigersinn drehen",
         }
         for child in self._tb_children:
             if isinstance(child, tk.Button) and child.cget("text") in TOOLTIPS:
@@ -725,17 +732,31 @@ class App:
         # Aktuelle Seite vor dem Wechsel sichern
         if self.pdf_image:
             self._undo_snapshot()
+            # gedrehtes/aktuelles Bild im Cache sichern
+            if not hasattr(self, 'page_images_cache'):
+                self.page_images_cache = {}
+            old_key = str(self.current_page)
+            self.page_images_cache[old_key] = self.pdf_image.copy()
         if self.dragging:
             self._release_b1(None)
         self._stop_typing()
         self.current_page = page
-        try:
-            pdf = pdfium.PdfDocument(self.pdf_path)
-            bm = pdf[page].render(scale=300/72)
-            self.pdf_image = bm.to_pil(); pdf.close()
-        except Exception as e:
-            messagebox.showerror("Fehler", f"Seite {page+1}: {e}")
-            return
+        key = str(page)
+        # Aus Cache laden, falls vorhanden — sonst frisch aus PDF
+        if hasattr(self, 'page_images_cache') and key in self.page_images_cache:
+            self.pdf_image = self.page_images_cache[key].copy()
+        else:
+            try:
+                pdf = pdfium.PdfDocument(self.pdf_path)
+                bm = pdf[page].render(scale=300/72)
+                self.pdf_image = bm.to_pil(); pdf.close()
+            except Exception as e:
+                messagebox.showerror("Fehler", f"Seite {page+1}: {e}")
+                return
+            # Gespeicherte Rotation auf frisches Bild anwenden
+            rot = self.page_rotation.get(key, 0)
+            if rot:
+                self.pdf_image = self.pdf_image.rotate(-rot, expand=True, fillcolor=(255, 255, 255))
         key = str(page)
         if key not in self.fields:
             self.fields[key] = []
@@ -761,6 +782,20 @@ class App:
     def _next_page(self):
         if self.current_page < self.page_count - 1:
             self._goto_page(self.current_page + 1)
+
+    def _rotate_page(self, delta):
+        """Dreht die aktuelle Seite um +90 oder -90 Grad."""
+        if not self.pdf_image:
+            return
+        key = str(self.current_page)
+        cur = self.page_rotation.get(key, 0)
+        new_rot = (cur + delta) % 360
+        self.page_rotation[key] = new_rot
+        # Bild im Speicher drehen
+        self.pdf_image = self.pdf_image.rotate(-delta, expand=True, fillcolor=(255, 255, 255))
+        self._fit_zoom()
+        self._render()
+        self._status_text(f"Seite um {delta}° gedreht")
 
     def _font_dialog(self):
         """Dialog für Schriftart, -größe und -farbe der Textfelder."""
@@ -868,6 +903,11 @@ class App:
         self.template_path = self.template_name = None
         self.project_path = self.project_name = None
         self.undo_stack = {}
+        if hasattr(self, 'page_images_cache'):
+            self.page_images_cache = {}
+        if hasattr(self, 'page_images'):
+            self.page_images = {}
+        self.page_rotation = {}
         self.cv.delete("all")
         self._status()
 
