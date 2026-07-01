@@ -1628,6 +1628,13 @@ class App:
             self._status_text("Keine weiteren Felder")
             # Trotzdem Tab unterdrücken, damit tkinter nicht zwischen Buttons springt
             return "break"
+        # Space auf Checkbox
+        if e.keysym == "space" and self.active_field and self.active_field.type == "checkbox":
+            self._undo_snapshot()
+            self.active_field.value = not (self.active_field.value in (True, "True", "true", "1"))
+            self._render()
+            self._status()
+            return "break"
         if not self.active_field or self.active_field.type != "text":
             return
         if e.keysym in ("Return", "Escape"):
