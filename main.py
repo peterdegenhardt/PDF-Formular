@@ -1607,7 +1607,7 @@ class App:
             cur = self._current_fields()
             # Shift+Tab = rückwärts
             step = -1 if (e.state & 0x1) else 1  # Shift gedrückt?
-            if self.active_field and self.active_field.type == "text":
+            if self.active_field and self.active_field.type in ("text", "checkbox"):
                 idx = cur.index(self.active_field)
             else:
                 idx = -1 if step == 1 else len(cur)
