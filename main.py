@@ -1614,14 +1614,18 @@ class App:
             for i in range(1, len(cur) + 1):
                 ni = (idx + i * step) % len(cur)
                 nf = cur[ni]
-                if nf.type == "text":
-                    self.active_field = nf
-                    self.typing = True
+                if nf.type in ("text", "checkbox"):
+                    if nf.type == "text":
+                        self.active_field = nf
+                        self.typing = True
+                    else:
+                        self.active_field = nf
+                        self.typing = False
                     self.cv.focus_set()
                     self._render()
                     self._status()
                     return "break"
-            self._status_text("Keine weiteren Textfelder")
+            self._status_text("Keine weiteren Felder")
             # Trotzdem Tab unterdrücken, damit tkinter nicht zwischen Buttons springt
             return "break"
         if not self.active_field or self.active_field.type != "text":
