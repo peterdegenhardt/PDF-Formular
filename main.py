@@ -137,8 +137,21 @@ class Stamp:
         self.w, self.h = 140, 50  # Standardgröße
 
     def contains(self, px, py):
-        # Vereinfachte Prüfung (ohne Rotation)
-        return self.x <= px <= self.x + self.w and self.y <= py <= self.y + self.h
+        """Prüft ob (px, py) im Stempel-Bereich liegt (basierend auf tatsächlicher Textgröße)."""
+        # Dynamisch die Größe aus dem Stempel-Bild ermitteln
+        from PIL import ImageDraw, ImageFont
+        pt = 48
+        try:
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", pt)
+        except:
+            font = ImageFont.load_default()
+        bbox = font.getbbox(self.text)
+        tw = bbox[2] - bbox[0]
+        th = bbox[3] - bbox[1]
+        pad = 12
+        w = tw + pad * 2
+        h = th + pad * 2
+        return self.x <= px <= self.x + w and self.y <= py <= self.y + h
 
     def to_dict(self):
         return {"x": self.x, "y": self.y, "text": self.text,
