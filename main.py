@@ -709,6 +709,10 @@ class App:
         self.root.bind("<Button-1>", self._close_menus, add="+")
         self.root.bind("<Button-3>", self._close_menus, add="+")
 
+    # ═══════════════════════════════════════════
+    # WERKZEUG-AUSWAHL (Toolbox)
+    # ═══════════════════════════════════════════
+
     def _set_tool(self, name):
         """Wählt ein Werkzeug aus der Toolbox."""
         self.selected_tool = name
@@ -747,6 +751,10 @@ class App:
     def _current_fields(self):
         """Gibt die Feld-Liste der aktuellen Seite zurück (oder leere Liste)."""
         return self.fields.get(str(self.current_page), [])
+
+    # ═══════════════════════════════════════════
+    # SEITEN-NAVIGATION
+    # ═══════════════════════════════════════════
 
     def _goto_page(self, page):
         """Wechselt zu einer bestimmten Seite."""
@@ -819,6 +827,10 @@ class App:
         self._fit_zoom()
         self._render()
         self._status_text(f"Seite um {delta}° gedreht")
+
+    # ═══════════════════════════════════════════
+    # DIALOGE (Schrift, Farbschema, Allgemein, Einstellungen)
+    # ═══════════════════════════════════════════
 
     def _font_dialog(self):
         """Dialog für Schriftart, -größe und -farbe der Textfelder."""
@@ -904,6 +916,10 @@ class App:
         win.bind("<Return>", lambda e: on_ok())
         win.bind("<Escape>", lambda e: on_cancel())
 
+    # ═══════════════════════════════════════════
+    # PROJEKT-/DATEI-VERWALTUNG
+    # ═══════════════════════════════════════════
+
     def _close_all(self):
         """Schließt PDF, Vorlage, Projekt und setzt alles zurück."""
         self._stop_typing()
@@ -928,8 +944,6 @@ class App:
         self.undo_stack = {}
         if hasattr(self, 'page_images_cache'):
             self.page_images_cache = {}
-        if hasattr(self, 'page_images'):
-            self.page_images = {}
         self.page_rotation = {}
         self.cv.delete("all")
         self._status()
@@ -1139,6 +1153,10 @@ class App:
         win.bind("<Return>", lambda e: on_ok())
         win.bind("<Escape>", lambda e: on_cancel())
 
+    # ═══════════════════════════════════════════
+    # ANZEIGE-OPTIONEN (Rahmen, Lineal, Zoom)
+    # ═══════════════════════════════════════════
+
     def _toggle_frames(self):
         self.show_frames = not self.show_frames
         self.btn_frame.configure(bg=C["green"] if self.show_frames else C["status"])
@@ -1150,6 +1168,10 @@ class App:
         self.btn_ruler.configure(bg=C["green"] if self.show_ruler else C["status"])
         self._render()
         self._status()
+
+    # ═══════════════════════════════════════════
+    # UNDO
+    # ═══════════════════════════════════════════
 
     def _undo_snapshot(self):
         """Aktuellen Zustand für Undo sichern."""
@@ -1207,6 +1229,10 @@ class App:
                 btn.configure(bg=C["bg"], fg=C["text"], relief=tk.FLAT)
             self._status()
 
+    # ═══════════════════════════════════════════
+    # MODUS (Ausfüllen / Editor)
+    # ═══════════════════════════════════════════
+
     def _set_mode(self, mode):
         self._stop_typing()
         self.mode = mode
@@ -1225,7 +1251,10 @@ class App:
         self._render()
         self._status()
 
-    # ─── PDF ─────────────────────────────────────────────────
+    # ═══════════════════════════════════════════
+    # PDF LADEN & VORLAGEN / PROJEKTE
+    # ═══════════════════════════════════════════
+
     def _open_pdf(self):
         p = filedialog.askopenfilename(title="PDF öffnen", filetypes=[("PDF","*.pdf"),("*","*.*")])
         if p: self._load_pdf(p)
@@ -1368,7 +1397,9 @@ class App:
         n_val = sum(1 for v in self.fields.values() for f in v if f.value)
         messagebox.showinfo("Gespeichert", f"Projekt '{name}', {n_val} Feld(er) ausgefüllt"); self._status()
 
-    # ─── Popup-Menüs ──────────────────────────────────────────
+    # ═══════════════════════════════════════════
+    # DROPDOWN-MENÜS (Öffnen / Speichern)
+    # ═══════════════════════════════════════════
     def _close_menus(self, event=None):
         """Schließt alle offenen Popup-Menüs."""
         if hasattr(self, '_active_menu') and self._active_menu:
@@ -1406,7 +1437,10 @@ class App:
         self._active_menu = menu
         menu.post(x, y)
 
-    # ─── Zoom ─────────────────────────────────────────────────
+    # ═══════════════════════════════════════════
+    # ZOOM
+    # ═══════════════════════════════════════════
+
     def _fit_zoom(self):
         try:
             cw, ch = max(1,self.cv.winfo_width()), max(1,self.cv.winfo_height())
@@ -1418,7 +1452,10 @@ class App:
 
     def _zoom_reset(self): self._stop_typing(); self._fit_zoom(); self._render()
 
-    # ─── Rendern ──────────────────────────────────────────────
+    # ═══════════════════════════════════════════
+    # RENDERN (Canvas-Ausgabe)
+    # ═══════════════════════════════════════════
+
     def _render(self):
         if not self.pdf_image: return
         try:
@@ -1522,6 +1559,10 @@ class App:
                                fill="white", font=("Arial",10))
         except Exception as e: print(f"Render: {e}")
 
+    # ═══════════════════════════════════════════
+    # FELDER ZEICHNEN (Canvas)
+    # ═══════════════════════════════════════════
+
     def _draw(self, f):
         z, ox, oy = self.zoom, self.ox, self.oy
         x1, y1 = ox+int(f.x1*z), oy+int(f.y1*z)
@@ -1581,7 +1622,10 @@ class App:
             self.cv.create_text(cx, cy, text="✓", fill="#000",
                                font=("Segoe UI",sz,"bold"), tags="f")
 
-    # ─── Maus ─────────────────────────────────────────────────
+    # ═══════════════════════════════════════════
+    # DATUM EINFÜGEN & MAUS-HILFSFUNKTIONEN
+    # ═══════════════════════════════════════════
+
     def _insert_date(self):
         """Fuegt heutiges Datum (TT.MM.JJJJ) in das aktive Textfeld ein."""
         if self.mode != "fill":
@@ -1606,6 +1650,10 @@ class App:
 
     def _stop_typing(self):
         self.active_field = None; self.typing = False; self._render()
+
+    # ═══════════════════════════════════════════
+    # TASTATUR-EINGABE
+    # ═══════════════════════════════════════════
 
     def _key(self, e):
         if self.mode != "fill":
@@ -1656,6 +1704,10 @@ class App:
             v = str(self.active_field.value) if self.active_field.value else ""
             self.active_field.value = v + e.char; self._render(); self._status()
         self.cv.focus_set()
+
+    # ═══════════════════════════════════════════
+    # MAUS-EVENTS (Klick, Drag, Release)
+    # ═══════════════════════════════════════════
 
     def _click(self, e):
         """Linksklick ohne Strg: Edit → neues Feld / Fill → auswählen / Stempel → setzen"""
@@ -2202,6 +2254,10 @@ class App:
             self.panning = False
             self.cv.configure(cursor="hand2")
 
+    # ═══════════════════════════════════════════
+    # WERKZEUG-EINSTELLUNGEN (Rechtsklick-Dialoge)
+    # ═══════════════════════════════════════════
+
     def _tool_settings_dialog(self, tool):
         """Rechtsklick-Dialog für Werkzeug-Einstellungen (Linie/Pfeil)."""
         win = tk.Toplevel(self.root)
@@ -2372,6 +2428,10 @@ class App:
                      win.destroy())
                  ).grid(row=btn_row, column=0, columnspan=5, pady=(12,10))
 
+    # ═══════════════════════════════════════════
+    # FELD-DIALOG (Name + Typ bei Neuanlage)
+    # ═══════════════════════════════════════════
+
     def _field_dialog(self, f):
         """Ein Dialog für Feldname + Typ (statt zwei hintereinander)."""
         win = tk.Toplevel(self.root)
@@ -2440,7 +2500,10 @@ class App:
         if not result["name"]: return None
         return (result["name"], result["type"], result["group"])
 
-    # ─── Export ───────────────────────────────────────────────
+    # ═══════════════════════════════════════════
+    # EXPORT (PDF-Build + Speichern + Drucken)
+    # ═══════════════════════════════════════════
+
     def _build_pdf(self) -> str:
         if not self.pdf_image: raise ValueError("Kein PDF")
         img = self.pdf_image.copy()
@@ -2579,224 +2642,9 @@ class App:
             elif sys.platform == "darwin": os.system(f"open '{p}'")
         except Exception as e: messagebox.showerror("Fehler", str(e))
 
-    def _scan_dialog(self):
-        """Scannt ein Dokument und fügt es als neue Seite an das aktuelle PDF an."""
-        if sys.platform != "linux":
-            messagebox.showinfo("Scan", "Scan nur unter Linux verfügbar (SANE).\nNutze '📁 Bilddatei' als Alternative.")
-            return
-        # Dialog: scan oder foto?
-        win = tk.Toplevel(self.root)
-        win.title("Scan / Bild einfügen")
-        win.configure(bg=C["bg"])
-        win.transient(self.root)
-        win.grab_set()
-        win.resizable(False, False)
-
-        rx, ry = self.root.winfo_x(), self.root.winfo_y()
-        rw, rh = self.root.winfo_width(), self.root.winfo_height()
-        ww, wh = 320, 180
-        win.geometry(f"{ww}x{wh}+{rx+rw//2-ww//2}+{ry+rh//2-wh//2}")
-
-        tk.Label(win, text="Quelle auswählen:", bg=C["bg"], fg=C["text"],
-                font=("Segoe UI", 11, "bold")).pack(pady=(16, 10))
-
-        def _scan():
-            win.destroy()
-            self._scan_from_scanner()
-
-        def _from_file():
-            win.destroy()
-            self._scan_from_file()
-
-        btn_frame = tk.Frame(win, bg=C["bg"])
-        btn_frame.pack(pady=6)
-        tk.Button(btn_frame, text="📷 Scanner", command=_scan,
-                 bg=C["accent"], fg="#11111b", font=("Segoe UI", 10, "bold"),
-                 bd=0, padx=20, pady=6, cursor="hand2").pack(side=tk.LEFT, padx=6)
-        tk.Button(btn_frame, text="📁 Bilddatei", command=_from_file,
-                 bg=C["yellow"], fg="#11111b", font=("Segoe UI", 10, "bold"),
-                 bd=0, padx=20, pady=6, cursor="hand2").pack(side=tk.LEFT, padx=6)
-
-        tk.Button(win, text="Abbrechen", command=win.destroy,
-                 bg=C["red"], fg="#11111b", font=("Segoe UI", 9, "bold"),
-                 bd=0, padx=20, pady=4, cursor="hand2").pack(pady=(10, 0))
-        win.bind("<Escape>", lambda e: win.destroy())
-
-    def _scan_from_scanner(self):
-        """Startet einen Scanvorgang und fügt das Ergebnis als neue Seite ein.
-        Versucht verschiedene SANE-Backends (scanimage, python-sane, sudo)."""
-        import subprocess, tempfile, os, shutil
-
-        # Prüfen ob scanimage existiert
-        scanimage_path = shutil.which("scanimage")
-        if not scanimage_path:
-            messagebox.showwarning("SANE fehlt",
-                "Scan-Programm 'scanimage' nicht gefunden.\n"
-                "Installiere: sudo apt install sane-utils\n"
-                "Danach evtl.: sudo sed -i 's/^# grundlag/grundlag/' /etc/sane.d/genesys.conf\n"
-                "Alternativ '📁 Bilddatei' nutzen.")
-            return
-
-        self._status_text("Scanne... bitte warten")
-        self.root.update()
-
-        tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
-        tmp.close()
-
-        # Versuche 1: scanimage direkt
-        try:
-            r = subprocess.run(
-                [scanimage_path, "--resolution", "300", "--format=png",
-                 "-o", tmp.name],
-                capture_output=True, text=True, timeout=30)
-            if r.returncode == 0:
-                scan_img = Image.open(tmp.name)
-                self._add_image_as_page(scan_img)
-                try: os.unlink(tmp.name)
-                except: pass
-                return
-            error_msg = r.stderr
-        except Exception as e:
-            error_msg = str(e)
-
-        # Versuche 2: mit sudo (falls Scanner keine User-Rechte hat)
-        try:
-            r = subprocess.run(
-                ["sudo", "-n", scanimage_path, "--resolution", "300",
-                 "--format=png", "-o", tmp.name],
-                capture_output=True, text=True, timeout=30)
-            if r.returncode == 0:
-                scan_img = Image.open(tmp.name)
-                self._add_image_as_page(scan_img)
-                self._status_text("Scan erfolgreich (mit sudo)")
-                try: os.unlink(tmp.name)
-                except: pass
-                return
-        except:
-            pass
-
-        # Beide fehlgeschlagen
-        messagebox.showerror("Scan-Fehler",
-            f"Scanner reagiert nicht.\n\n"
-            f"Fehler: {error_msg}\n\n"
-            f"Tipps:\n"
-            f"1. sudo apt install sane-utils\n"
-            f"2. scanimage -L im Terminal testen\n"
-            f"3. sudo scanimage -L (wenn User keine Rechte hat)\n"
-            f"4. Oder nutze '📁 Bilddatei'")
-
-    def _scan_from_file(self):
-        """Öffnet einen Bild-Dateidialog und fügt das Bild als neue Seite ein."""
-        p = filedialog.askopenfilename(
-            title="Bild auswählen",
-            filetypes=[("Bilder", "*.png *.jpg *.jpeg *.tiff *.bmp *.webp"),
-                       ("Alle", "*.*")])
-        if not p:
-            return
-        try:
-            from PIL import Image
-            img = Image.open(p)
-            self._add_image_as_page(img)
-        except Exception as e:
-            messagebox.showerror("Fehler", f"Bild konnte nicht geladen werden:\n{e}")
-
-    def _add_image_as_page(self, img):
-        """Fügt ein PIL-Bild als neue Seite hinten ans aktuelle PDF an."""
-        from PIL import Image
-        # Auf 300 DPI skalieren (A4 ~ 2480x3508 px)
-        max_w, max_h = 2480, 3508
-        w, h = img.size
-        scale = min(max_w / w, max_h / h, 1.0)
-        if scale < 1.0:
-            new_w, new_h = int(w * scale), int(h * scale)
-            img = img.resize((new_w, new_h), Image.LANCZOS)
-
-        # Bild im RGB-Format
-        if img.mode != "RGB":
-            img = img.convert("RGB")
-
-        # Bisheriges PDF (Seite 0) + neue Seite als zweites Bild
-        if not self.pdf_image:
-            # Noch kein PDF geladen – Bild als neue Seite öffnen
-            self.pdf_image = img
-            self.page_count = 1
-            self.current_page = 0
-            self.fields = {"0": []}
-            self.stamps = {"0": []}
-            self.arrows = {"0": []}
-            self.rects = {"0": []}
-            self.lines = {"0": []}
-            self.ellipses = {"0": []}
-            self.masks = {"0": []}
-            self.highlighters = {"0": []}
-            self.pdf_path = None
-            self._fit_zoom()
-            self._render()
-            self._status()
-            self._status_text("Bild als neue Seite geladen")
-            return
-
-        # Es gibt schon ein PDF – neue Seite dranhängen
-        # Aktuelle Seite merken
-        old_page = self.current_page
-        old_fields = dict(self.fields)
-        old_stamps = dict(self.stamps)
-        old_arrows = dict(self.arrows)
-        old_rects = dict(self.rects)
-        old_lines = dict(self.lines)
-        old_ellipses = dict(self.ellipses)
-        old_masks = dict(self.masks)
-        old_highlighters = dict(self.highlighters)
-
-        # Neue Seite als Index neben dem geladenen PDF
-        new_idx = old_page + 1  # nach aktueller Seite einfügen
-
-        # Verschieben: alles ab new_idx um 1 nach hinten
-        def _shift(d, start):
-            items = sorted(d.items(), key=lambda x: int(x[0]))
-            new_d = {}
-            for k, v in items:
-                k_int = int(k)
-                if k_int >= new_idx:
-                    new_d[str(k_int + 1)] = v
-                else:
-                    new_d[k] = v
-            return new_d
-
-        self.fields = _shift(old_fields, new_idx)
-        self.stamps = _shift(old_stamps, new_idx)
-        self.arrows = _shift(old_arrows, new_idx)
-        self.rects = _shift(old_rects, new_idx)
-        self.lines = _shift(old_lines, new_idx)
-        self.ellipses = _shift(old_ellipses, new_idx)
-        self.masks = _shift(old_masks, new_idx)
-        self.highlighters = _shift(old_highlighters, new_idx)
-
-        # Neue Seite einfügen
-        key = str(new_idx)
-        self.fields[key] = []
-        self.stamps[key] = []
-        self.arrows[key] = []
-        self.rects[key] = []
-        self.lines[key] = []
-        self.ellipses[key] = []
-        self.masks[key] = []
-        self.highlighters[key] = []
-
-        self.page_count += 1
-
-        # Alte Bilder als Liste speichern (page_images)
-        if not hasattr(self, "page_images"):
-            self.page_images = {str(old_page): self.pdf_image.copy()}
-        self.page_images[key] = img.copy()
-
-        # Zur neuen Seite springen
-        self.current_page = new_idx
-        self.pdf_image = img.copy()
-        self._fit_zoom()
-        self._render()
-        self._status()
-        self._status_text(f"Seite {new_idx + 1} hinzugefügt (Scan/Bild)")
+    # ═══════════════════════════════════════════
+    # ZURÜCKSETZEN
+    # ═══════════════════════════════════════════
 
     def _reset(self):
         self._stop_typing()
@@ -2838,6 +2686,10 @@ class App:
         """Gibt die Bilder-Liste der aktuellen Seite zurück."""
         return self.images.get(str(self.current_page), [])
 
+    # ═══════════════════════════════════════════
+    # STATISCHE HILFSFUNKTIONEN (Punkt-auf-Linie, Einrasten, Farbe)
+    # ═══════════════════════════════════════════
+
     @staticmethod
     def _point_near_line(px, py, x1, y1, x2, y2, tol=15.0):
         """Prueft ob Punkt (px,py) nah an der Strecke (x1,y1)->(x2,y2) liegt."""
@@ -2849,6 +2701,10 @@ class App:
         nx = x1 + t * dx
         ny = y1 + t * dy
         return math.hypot(px - nx, py - ny) <= tol
+
+    # ═══════════════════════════════════════════
+    # CANVAS-ZEICHNUNG (Rechteck, Linie, Ellipse, Maske, Textmarker, Bild, Pfeil)
+    # ═══════════════════════════════════════════
 
     def _draw_rect(self, r):
         """Zeichnet ein Rechteck auf dem Canvas."""
@@ -2865,6 +2721,10 @@ class App:
         """Malt ein Rechteck auf das 300-DPI-PDF-Bild (ImageDraw)."""
         d.rectangle([(r.x1, r.y1), (r.x2, r.y2)],
                     outline=r.color, fill=r.fill, width=max(1, r.width))
+
+    # ═══════════════════════════════════════════
+    # PDF-EXPORT-ZEICHNUNG (ImageDraw für 300-DPI)
+    # ═══════════════════════════════════════════
 
     @staticmethod
     def _snap_line(px, py, x1, y1, threshold=15):
@@ -3116,6 +2976,10 @@ class App:
               y2 - head_len * sin(angle + head_angle))
         d.polygon([(x2, y2), p1, p2], fill=color, outline=color)
 
+    # ═══════════════════════════════════════════
+    # STEMPEL (Bild-Erzeugung, Canvas, Auswahl-Dialog)
+    # ═══════════════════════════════════════════
+
     def _stempel_bild(self, s, scale=1.0):
         """Erzeugt ein PIL-Image des Stempels (in 300-DPI-Auflösung mit optionalem Skalierungsfaktor)."""
         pt = max(12, int(48 * scale))
@@ -3231,6 +3095,10 @@ class App:
             return "🖱️ Linke Taste: Text eingeben oder Häkchen setzen | Rechte Taste: Bild verschieben | Mausrad: Zoom"
         else:  # edit
             return "🖱️ Links: Feld anlegen | Strg+Klick: Feld verschieben | Mitte: Feld verschieben | Rechts: Bild verschieben | Rad: Zoom | Rechts auf Feld: Löschen"
+
+    # ═══════════════════════════════════════════
+    # INFO-DIALOGE (Über, Hilfe, Lizenz)
+    # ═══════════════════════════════════════════
 
     def _info_about(self):
         """Info-Dialog: Über PDF-Formular."""
@@ -3470,6 +3338,10 @@ class App:
                  bg=C["accent"], fg="#11111b", font=("Segoe UI", 9, "bold"),
                  bd=0, padx=20, pady=4, cursor="hand2").pack()
         win.bind("<Escape>", lambda e: win.destroy())
+
+    # ═══════════════════════════════════════════
+    # APP-STEUERUNG (Exit, Status, Hilfe-Text)
+    # ═══════════════════════════════════════════
 
     def _exit_app(self):
         """Beendet die App sauber."""
