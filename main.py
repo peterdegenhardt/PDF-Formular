@@ -3426,8 +3426,10 @@ class App:
         text.insert(tk.END, "    für Linie, Pfeil, Rechteck, etc.\n\n")
         text.insert(tk.END, "  • Stempel haben immer 15° Rotation für\n")
         text.insert(tk.END, "    einen „echten“ Abdruck-Effekt.\n\n")
-        text.insert(tk.END, "  • Mit „Bild einfügen“ kannst du Scans oder\n")
-        text.insert(tk.END, "    Fotos als neue Seite hinzufügen.\n")
+        text.insert(tk.END, "  • Mit \u201eBild einf\u00fcgen\u201c kannst du Scans oder\n")
+        text.insert(tk.END, "    Fotos in einem Rahmen auf der aktuellen Seite platzieren.\n")
+        text.insert(tk.END, "  \u2022 \u00dcber \u201e\ud83d\udcc1 Bilddatei\u201c im Scan-Dialog f\u00fcgst du ein\n")
+        text.insert(tk.END, "    Bild als eigenst\u00e4ndige neue Seite ein.\n")
         text.config(state=tk.DISABLED)
 
         btn_frame = tk.Frame(win, bg=C["bg"])
