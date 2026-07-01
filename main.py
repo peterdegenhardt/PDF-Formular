@@ -430,6 +430,13 @@ class App:
         sm.add_command(label="🖊️ Schrift...", command=self._font_dialog)
         sm.add_command(label="🎨 Farbschema...", command=self._color_dialog)
         sm.add_command(label="⚙️ Allgemein...", command=self._general_dialog)
+        # ─── Info-Menü ───
+        im = tk.Menu(mb, tearoff=0, bg=C["bg"], fg=C["text"],
+                     activebackground=C["accent"], activeforeground="#11111b")
+        mb.add_cascade(label="Info", menu=im)
+        im.add_command(label="📄 Über PDF-Formular", command=self._info_about)
+        im.add_command(label="❓ Hilfe", command=self._info_help)
+        im.add_command(label="⚖️ Lizenz & Haftungsausschluss", command=self._info_license)
 
     def _build(self):
         self.root.configure(bg=C["bg"])
@@ -3224,6 +3231,115 @@ class App:
             return "🖱️ Linke Taste: Text eingeben oder Häkchen setzen | Rechte Taste: Bild verschieben | Mausrad: Zoom"
         else:  # edit
             return "🖱️ Links: Feld anlegen | Strg+Klick: Feld verschieben | Mitte: Feld verschieben | Rechts: Bild verschieben | Rad: Zoom | Rechts auf Feld: Löschen"
+
+    def _info_about(self):
+        """Info-Dialog: Über PDF-Formular."""
+        win = tk.Toplevel(self.root)
+        win.title("Über PDF-Formular")
+        win.configure(bg=C["bg"])
+        win.transient(self.root)
+        win.grab_set()
+        win.resizable(False, False)
+        rx, ry = self.root.winfo_x(), self.root.winfo_y()
+        rw, rh = self.root.winfo_width(), self.root.winfo_height()
+        ww, wh = 380, 280
+        win.geometry(f"{ww}x{wh}+{rx+rw//2-ww//2}+{ry+rh//2-wh//2}")
+
+        tk.Label(win, text="📄 PDF-Formular Füller & Editor", bg=C["bg"], fg=C["text"],
+                 font=("Segoe UI", 13, "bold")).pack(pady=(18, 4))
+        tk.Label(win, text=f"Version {APP_VERSION}", bg=C["bg"], fg=C["accent"],
+                 font=("Segoe UI", 11)).pack(pady=(0, 10))
+        tk.Label(win, text="Ein Werkzeug zum Ausfüllen und Bearbeiten\nvon PDF-Formularen mit Feldern, Stempeln,\nPfeilen, Rechtecken, Markern und mehr.",
+                 bg=C["bg"], fg=C["dim"], font=("Segoe UI", 9), justify=tk.CENTER).pack(pady=(0, 6))
+        tk.Label(win, text="Entwickelt von Peter Degenhardt\nBuild: Python + tkinter + pypdfium2 + Pillow",
+                 bg=C["bg"], fg=C["dim"], font=("Segoe UI", 8), justify=tk.CENTER).pack(pady=(0, 12))
+        tk.Button(win, text="Schließen", command=win.destroy,
+                 bg=C["accent"], fg="#11111b", font=("Segoe UI", 9, "bold"),
+                 bd=0, padx=20, pady=4, cursor="hand2").pack(pady=(0, 10))
+        win.bind("<Escape>", lambda e: win.destroy())
+
+    def _info_help(self):
+        """Hilfe-Dialog."""
+        win = tk.Toplevel(self.root)
+        win.title("Hilfe")
+        win.configure(bg=C["bg"])
+        win.transient(self.root)
+        win.resizable(False, False)
+        rx, ry = self.root.winfo_x(), self.root.winfo_y()
+        rw, rh = self.root.winfo_width(), self.root.winfo_height()
+        ww, wh = 420, 440
+        win.geometry(f"{ww}x{wh}+{rx+rw//2-ww//2}+{ry+rh//2-wh//2}")
+
+        text = tk.Text(win, bg=C["canvas"], fg=C["text"], font=("Segoe UI", 9),
+                       wrap=tk.WORD, padx=10, pady=10, relief=tk.FLAT, bd=0,
+                       highlightthickness=0)
+        text.pack(fill=tk.BOTH, expand=True, padx=10, pady=(10, 4))
+        text.insert(tk.END, "PDF-Formular Füller — Kurzhilfe\n\n")
+        text.insert(tk.END, "📂 Datei-Menü\n")
+        text.insert(tk.END, "  • PDF öffnen — öffnet ein PDF-Dokument\n")
+        text.insert(tk.END, "  • Vorlage laden — Feld-Layout aus JSON laden\n")
+        text.insert(tk.END, "  • Projekt öffnen — Felder + Werte laden\n")
+        text.insert(tk.END, "  • PDF speichern — ausgefülltes PDF exportieren\n")
+        text.insert(tk.END, "  • Vorlage/Projekt speichern — Layout/Werte sichern\n\n")
+        text.insert(tk.END, "🖱️ Bedienung\n")
+        text.insert(tk.END, "  • AUSFÜLLEN: Klick ins Feld → tippen\n")
+        text.insert(tk.END, "  • Tab/Shift+Tab — Feld springen\n")
+        text.insert(tk.END, "  • Leertaste — Checkbox umschalten\n")
+        text.insert(tk.END, "  • EDITOR: Klick + Ziehen → neues Feld\n")
+        text.insert(tk.END, "  • Strg+Klick (oder Mitte) — Feld verschieben\n")
+        text.insert(tk.END, "  • Rechtsklick auf Feld — löschen\n")
+        text.insert(tk.END, "  • Mausrad — Zoom\n")
+        text.insert(tk.END, "  • Rechtsklick + Ziehen — Bild verschieben\n\n")
+        text.insert(tk.END, "🛠️ Werkzeuge (Toolbox links)\n")
+        text.insert(tk.END, "  • Pfeil, Linie, Rechteck, Ellipse,\n")
+        text.insert(tk.END, "    Maske, Stempel, Textmarker, Bild\n")
+        text.insert(tk.END, "  • Rechtsklick auf Werkzeug = Einstellungen\n\n")
+        text.insert(tk.END, "⌨️ Tastatur\n")
+        text.insert(tk.END, "  • Strg+Z — Rückgängig\n")
+        text.insert(tk.END, "  • Esc — Werkzeug abwählen / Tippen beenden\n")
+        text.insert(tk.END, "  • Tab/Shift+Tab — nächstes/vorheriges Feld\n\n")
+        text.insert(tk.END, "↺/↻ — Seite 90° drehen\n")
+        text.insert(tk.END, "Datum — Heutiges Datum einfügen\n")
+        text.config(state=tk.DISABLED)
+
+        btn_frame = tk.Frame(win, bg=C["bg"])
+        btn_frame.pack(pady=(4, 10))
+        tk.Button(btn_frame, text="Schließen", command=win.destroy,
+                 bg=C["accent"], fg="#11111b", font=("Segoe UI", 9, "bold"),
+                 bd=0, padx=20, pady=4, cursor="hand2").pack()
+        win.bind("<Escape>", lambda e: win.destroy())
+
+    def _info_license(self):
+        """Lizenz & Haftungsausschluss."""
+        win = tk.Toplevel(self.root)
+        win.title("Lizenz & Haftungsausschluss")
+        win.configure(bg=C["bg"])
+        win.transient(self.root)
+        win.resizable(False, False)
+        rx, ry = self.root.winfo_x(), self.root.winfo_y()
+        rw, rh = self.root.winfo_width(), self.root.winfo_height()
+        ww, wh = 400, 320
+        win.geometry(f"{ww}x{wh}+{rx+rw//2-ww//2}+{ry+rh//2-wh//2}")
+
+        txt = tk.Text(win, bg=C["canvas"], fg=C["text"], font=("Segoe UI", 9),
+                      wrap=tk.WORD, padx=10, pady=10, relief=tk.FLAT, bd=0,
+                      highlightthickness=0)
+        txt.pack(fill=tk.BOTH, expand=True, padx=10, pady=(10, 4))
+        txt.insert(tk.END, "MIT License\n\n")
+        txt.insert(tk.END, "Copyright (c) 2024-2025 Peter Degenhardt\n\n")
+        txt.insert(tk.END, "Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\n\n")
+        txt.insert(tk.END, "The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\n\n")
+        txt.insert(tk.END, "HAFTUNGSAUSSCHLUSS\n\n")
+        txt.insert(tk.END, "DIESE SOFTWARE WIRD OHNE MÄNGELGEWÄHR UND OHNE JEGLICHE AUSDRÜCKLICHE ODER STILLSCHWEIGENDE GEWÄHRLEISTUNG BEREITGESTELLT, EINSCHLIESSLICH, ABER NICHT BESCHRÄNKT AUF DIE GEWÄHRLEISTUNG DER MARKTGÄNGIGKEIT UND EIGNUNG FÜR EINEN BESTIMMTEN ZWECK. DIE AUTOREN ÜBERNEHMEN KEINE HAFTUNG FÜR DIREKTE, INDIREKTE, ZUFÄLLIGE, BESONDERE ODER FOLGESCHÄDEN, DIE AUS DER NUTZUNG DER SOFTWARE ENTSTEHEN.\n\n")
+        txt.insert(tk.END, "Der Nutzer ist für die Prüfung und Richtigkeit der ausgefüllten Formulare selbst verantwortlich. Dieses Tool ersetzt keine fachliche Prüfung.")
+        txt.config(state=tk.DISABLED)
+
+        btn_frame = tk.Frame(win, bg=C["bg"])
+        btn_frame.pack(pady=(4, 10))
+        tk.Button(btn_frame, text="Schließen", command=win.destroy,
+                 bg=C["accent"], fg="#11111b", font=("Segoe UI", 9, "bold"),
+                 bd=0, padx=20, pady=4, cursor="hand2").pack()
+        win.bind("<Escape>", lambda e: win.destroy())
 
     def _exit_app(self):
         """Beendet die App sauber."""
