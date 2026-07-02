@@ -488,11 +488,63 @@ class App:
         # --- Reset ---
         self._btn(self._tb, "Zurücksetzen", self._reset, C["red"], w=11)
 
-        # --- Drehung (öffnet Popup mit Schieberegler) ---
-        self.rot_label = tk.Label(self._tb, text="0°", font=("Segoe UI", 8, "bold"),
+        # --- Drehung (-90° bis +90°, direkt in der Toolbar) ---
+        rot_frame = tk.Frame(self._tb, bg=C["bg"])
+        rot_frame.pack(side=tk.LEFT, padx=2)
+
+        def _rot_step(delta):
+            if not self.pdf_image:
+                return
+            key = str(self.current_page)
+            cur = self.page_rotation.get(key, 0)
+            target = max(-90, min(90, cur + delta))
+            if target == cur:
+                return
+            self.page_rotation[key] = target
+            self.pdf_image = self.pdf_image.rotate(-(target - cur), expand=True, fillcolor=(255, 255, 255))
+            self._fit_zoom()
+            self._render()
+            self.rot_var.set(str(target))
+            self.rot_label.config(text=f"{target}°")
+
+        tk.Button(rot_frame, text="−", font=("Segoe UI", 12, "bold"),
+                  command=lambda: _rot_step(-1),
+                  bg=C["cyan"], fg="#11111b", relief=tk.FLAT,
+                  width=2, cursor="hand2", takefocus=0).pack(side=tk.LEFT)
+
+        self.rot_label = tk.Label(rot_frame, text="0°", font=("Segoe UI", 8, "bold"),
                                   bg=C["bg"], fg=C["cyan"], width=3)
-        self.rot_label.pack(side=tk.LEFT, padx=(2, 0))
-        self._btn(self._tb, "↻", self._open_rotation_dialog, C["cyan"], fg="#11111b")
+        self.rot_label.pack(side=tk.LEFT, padx=(1, 0))
+
+        self.rot_var = tk.StringVar(value="0")
+        rot_spin = tk.Spinbox(rot_frame, from_=-90, to=90, textvariable=self.rot_var,
+                              width=4, font=("Segoe UI", 8),
+                              bg=C["bg"], fg=C["text"], buttonbackground=C["status"],
+                              justify=tk.CENTER, relief=tk.SUNKEN, bd=1)
+        rot_spin.pack(side=tk.LEFT, padx=1)
+
+        def _rot_spin_changed(*_):
+            try:
+                target = max(-90, min(90, int(self.rot_var.get())))
+                key = str(self.current_page)
+                cur = self.page_rotation.get(key, 0)
+                if target == cur or not self.pdf_image:
+                    self.rot_var.set(str(cur))
+                    return
+                self.page_rotation[key] = target
+                self.pdf_image = self.pdf_image.rotate(-(target - cur), expand=True, fillcolor=(255, 255, 255))
+                self._fit_zoom()
+                self._render()
+                self.rot_label.config(text=f"{target}°")
+            except ValueError:
+                key = str(self.current_page)
+                self.rot_var.set(str(self.page_rotation.get(key, 0)))
+        self.rot_var.trace_add("write", _rot_spin_changed)
+
+        tk.Button(rot_frame, text="+", font=("Segoe UI", 12, "bold"),
+                  command=lambda: _rot_step(1),
+                  bg=C["cyan"], fg="#11111b", relief=tk.FLAT,
+                  width=2, cursor="hand2", takefocus=0).pack(side=tk.LEFT)
 
         # --- Seiten-Navigation (rechtsbündig) ---
         self.page_label = tk.Label(self._tb, text="Seite ? / ?", font=("Segoe UI",9,"bold"),
@@ -519,7 +571,6 @@ class App:
             "Zurücksetzen": "Alle ausgefüllten Werte löschen",
             "⬅": "Vorherige Seite",
             "➡": "Nächste Seite",
-            "↻": "Seite drehen (Popup mit Schieberegler)",
         }
         for child in self._tb_children:
             if isinstance(child, tk.Button) and child.cget("text") in TOOLTIPS:
@@ -832,102 +883,6 @@ class App:
         self._fit_zoom()
         self._render()
         self._status_text(f"Seite um {delta}° gedreht")
-
-    def _open_rotation_dialog(self):
-        """Öffnet ein Popup-Fenster mit Schieberegler für die Rotation."""
-        if not self.pdf_image:
-            return
-        win = tk.Toplevel(self.root)
-        win.title("Drehung")
-        win.configure(bg=C["bg"])
-        win.geometry("320x160")
-        win.resizable(False, False)
-        win.transient(self.root)
-        win.grab_set()
-
-        key = str(self.current_page)
-        cur_rot = self.page_rotation.get(key, 0)
-
-        tk.Label(win, text="Seite frei drehen (-90° bis +90°)",
-                 font=("Segoe UI", 9), bg=C["bg"], fg=C["text"]).pack(pady=(10, 5))
-
-        # Winkel-Anzeige
-        val_label = tk.Label(win, text=f"{cur_rot}°", font=("Segoe UI", 16, "bold"),
-                             bg=C["bg"], fg=C["cyan"])
-        val_label.pack()
-
-        # ─── Slider-Ersatz: Buttons +/- und Spinbox ───
-        slider_frame = tk.Frame(win, bg=C["bg"])
-        slider_frame.pack(pady=8)
-
-        def update_display(val):
-            val_label.config(text=f"{val}°")
-            spin_var.set(str(val))
-
-        def step_down():
-            v = current[0]
-            if v > -90:
-                current[0] = v - 1
-                update_display(current[0])
-
-        def step_up():
-            v = current[0]
-            if v < 90:
-                current[0] = v + 1
-                update_display(current[0])
-
-        current = [cur_rot]
-
-        # Minus-Button
-        tk.Button(slider_frame, text="−", font=("Segoe UI", 14, "bold"),
-                  command=step_down,
-                  bg=C["cyan"], fg="#11111b", relief=tk.FLAT,
-                  width=3, cursor="hand2", takefocus=0).pack(side=tk.LEFT, padx=2)
-
-        # Spinbox für Direkteingabe
-        spin_var = tk.StringVar(value=str(cur_rot))
-        spin = tk.Spinbox(slider_frame, from_=-90, to=90, textvariable=spin_var,
-                          width=5, font=("Segoe UI", 11),
-                          bg=C["bg"], fg=C["text"], buttonbackground=C["status"],
-                          justify=tk.CENTER, relief=tk.SUNKEN, bd=1)
-        spin.pack(side=tk.LEFT, padx=4)
-        def spin_changed():
-            try:
-                v = int(spin_var.get())
-                v = max(-90, min(90, v))
-                current[0] = v
-                update_display(v)
-            except ValueError:
-                pass
-        spin_var.trace_add("write", lambda *_: spin_changed())
-
-        # Plus-Button
-        tk.Button(slider_frame, text="+", font=("Segoe UI", 14, "bold"),
-                  command=step_up,
-                  bg=C["cyan"], fg="#11111b", relief=tk.FLAT,
-                  width=3, cursor="hand2", takefocus=0).pack(side=tk.LEFT, padx=2)
-
-        # ─── OK / Abbrechen ───
-        btn_frame = tk.Frame(win, bg=C["bg"])
-        btn_frame.pack(pady=(4, 10))
-
-        def on_apply():
-            target = current[0]
-            delta = target - self.page_rotation.get(key, 0)
-            if delta != 0:
-                self.page_rotation[key] = target
-                self.pdf_image = self.pdf_image.rotate(-delta, expand=True, fillcolor=(255, 255, 255))
-                self._fit_zoom()
-                self._render()
-                self.rot_label.config(text=f"{target}°")
-            win.destroy()
-
-        tk.Button(btn_frame, text="Übernehmen", command=on_apply,
-                  bg=C["green"], fg="#11111b", relief=tk.FLAT, padx=20, pady=4,
-                  cursor="hand2", takefocus=0).pack(side=tk.LEFT, padx=5)
-        tk.Button(btn_frame, text="Abbrechen", command=win.destroy,
-                  bg=C["red"], fg="#11111b", relief=tk.FLAT, padx=20, pady=4,
-                  cursor="hand2", takefocus=0).pack(side=tk.LEFT, padx=5)
 
     # ═══════════════════════════════════════════
     # DIALOGE (Schrift, Farbschema, Allgemein, Einstellungen)
