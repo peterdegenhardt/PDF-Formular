@@ -488,20 +488,11 @@ class App:
         # --- Reset ---
         self._btn(self._tb, "Zurücksetzen", self._reset, C["red"], w=11)
 
-        # --- Schieberegler für Rotation (-90° bis +90°) ---
+        # --- Drehung (öffnet Popup mit Schieberegler) ---
         self.rot_label = tk.Label(self._tb, text="0°", font=("Segoe UI", 8, "bold"),
                                   bg=C["bg"], fg=C["cyan"], width=3)
-        self.rot_label.pack(side=tk.LEFT, padx=(4, 0))
-        self.rot_scale = tk.Scale(self._tb, from_=-90, to=90, orient=tk.HORIZONTAL,
-                                   length=120, resolution=1,
-                                   bg=C["bg"], fg=C["text"], troughcolor=C["bg"],
-                                   highlightbackground=C["bg"],
-                                   activebackground=C["cyan"],
-                                   sliderrelief=tk.FLAT, bd=0,
-                                   showvalue=False, takefocus=0, width=14,
-                                   sliderlength=20,
-                                   command=self._on_rotation_slider)
-        self.rot_scale.pack(side=tk.LEFT, padx=(0, 4))
+        self.rot_label.pack(side=tk.LEFT, padx=(2, 0))
+        self._btn(self._tb, "↻", self._open_rotation_dialog, C["cyan"], fg="#11111b")
 
         # --- Seiten-Navigation (rechtsbündig) ---
         self.page_label = tk.Label(self._tb, text="Seite ? / ?", font=("Segoe UI",9,"bold"),
@@ -528,6 +519,7 @@ class App:
             "Zurücksetzen": "Alle ausgefüllten Werte löschen",
             "⬅": "Vorherige Seite",
             "➡": "Nächste Seite",
+            "↻": "Seite drehen (Popup mit Schieberegler)",
         }
         for child in self._tb_children:
             if isinstance(child, tk.Button) and child.cget("text") in TOOLTIPS:
@@ -813,10 +805,9 @@ class App:
         self.selected = None
         self._fit_zoom()
         self._render()
-        # Schieberegler auf aktuellen Rotationswert setzen
-        if hasattr(self, 'rot_scale') and hasattr(self, 'rot_label'):
+        # rot_label updaten falls vorhanden
+        if hasattr(self, 'rot_label'):
             current_rot = self.page_rotation.get(str(page), 0)
-            self.rot_scale.set(current_rot)
             self.rot_label.config(text=f"{current_rot}°")
         self._status()
 
@@ -842,24 +833,57 @@ class App:
         self._render()
         self._status_text(f"Seite um {delta}° gedreht")
 
-    def _on_rotation_slider(self, val):
-        """Wird aufgerufen, wenn der Schieberegler bewegt wird."""
+    def _open_rotation_dialog(self):
+        """Öffnet ein Popup-Fenster mit Schieberegler für die Rotation."""
         if not self.pdf_image:
-            self.rot_scale.set(0)
-            self.rot_label.config(text="0°")
             return
+        win = tk.Toplevel(self.root)
+        win.title("Drehung")
+        win.configure(bg=C["bg"])
+        win.geometry("300x120")
+        win.resizable(False, False)
+        win.transient(self.root)
+        win.grab_set()
+
         key = str(self.current_page)
-        target = int(float(val))
-        cur = self.page_rotation.get(key, 0)
-        delta = target - cur
-        if delta == 0:
-            self.rot_label.config(text=f"{cur}°")
-            return
-        self.page_rotation[key] = target
-        self.pdf_image = self.pdf_image.rotate(-delta, expand=True, fillcolor=(255, 255, 255))
-        self._fit_zoom()
-        self._render()
-        self.rot_label.config(text=f"{target}°")
+        cur_rot = self.page_rotation.get(key, 0)
+
+        tk.Label(win, text="Seite frei drehen (-90° bis +90°)",
+                 font=("Segoe UI", 9), bg=C["bg"], fg=C["text"]).pack(pady=(10, 5))
+
+        val_label = tk.Label(win, text=f"{cur_rot}°", font=("Segoe UI", 11, "bold"),
+                             bg=C["bg"], fg=C["cyan"])
+        val_label.pack()
+
+        scale = tk.Scale(win, from_=-90, to=90, orient=tk.HORIZONTAL,
+                         length=250, resolution=1,
+                         bg=C["bg"], fg=C["text"], troughcolor=C["bg"],
+                         highlightbackground=C["bg"],
+                         activebackground=C["cyan"],
+                         sliderrelief=tk.FLAT, bd=0,
+                         width=16, sliderlength=24)
+        scale.set(cur_rot)
+        scale.pack(pady=(2, 8))
+
+        def on_apply():
+            target = scale.get()
+            delta = target - self.page_rotation.get(key, 0)
+            if delta != 0:
+                self.page_rotation[key] = target
+                self.pdf_image = self.pdf_image.rotate(-delta, expand=True, fillcolor=(255, 255, 255))
+                self._fit_zoom()
+                self._render()
+                self.rot_label.config(text=f"{target}°")
+            win.destroy()
+
+        btn_frame = tk.Frame(win, bg=C["bg"])
+        btn_frame.pack()
+        tk.Button(btn_frame, text="Übernehmen", command=on_apply,
+                  bg=C["green"], fg="#11111b", relief=tk.FLAT, padx=20, pady=4,
+                  cursor="hand2", takefocus=0).pack(side=tk.LEFT, padx=5)
+        tk.Button(btn_frame, text="Abbrechen", command=win.destroy,
+                  bg=C["red"], fg="#11111b", relief=tk.FLAT, padx=20, pady=4,
+                  cursor="hand2", takefocus=0).pack(side=tk.LEFT, padx=5)
 
     # ═══════════════════════════════════════════
     # DIALOGE (Schrift, Farbschema, Allgemein, Einstellungen)
