@@ -59,6 +59,8 @@ if exist *.spec del /f /q *.spec >nul 2>&1
 echo Baue EXE...
 pyinstaller --noconfirm --onefile --windowed ^
     --name "PDF-Formular" ^
+    --add-data "Ausgabe.pdf;." ^
+    --add-data "icons;icons" ^
     --hidden-import PIL._tkinter_finder ^
     main.py
 

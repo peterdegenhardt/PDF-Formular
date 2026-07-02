@@ -5,8 +5,7 @@ v1.7 - Korrigierte Positionierung, Editor-Rahmen, Button
 
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, simpledialog
-import json, os, sys, tempfile, base64
-from icons_base64 import ICONS as ICONS_BASE64
+import json, os, sys, tempfile
 from PIL import Image, ImageTk, ImageDraw, ImageFont
 import pypdfium2 as pdfium
 from collections import Counter
@@ -572,39 +571,37 @@ class App:
         for child in self._tb_children:
             if isinstance(child, tk.Button) and child.cget("text") in TOOLTIPS:
                 self._attach_tooltip(child, TOOLTIPS[child.cget("text")])
-        # ─── Icons laden ────────────────────────────────────────
-        # Strategie: 1) Base64 (in EXE eingebaut), 2) icons/-Ordner
+        # ─── Icons aus icons/-Ordner laden ────────────────────
+        def _icon_path(name):
+            """Sucht icons/<name>.png im Projekt- oder EXE-Verzeichnis."""
+            icon_name = f"{name}.png"
+            # 1) PyInstaller: eingebettete Dateien (--add-data)
+            if hasattr(sys, '_MEIPASS'):
+                p = os.path.join(sys._MEIPASS, "icons", icon_name)
+                if os.path.exists(p):
+                    return p
+            # 2) Neben der EXE (sys.argv[0] -> dist/PDF-Formular.exe)
+            base = os.path.dirname(os.path.abspath(sys.argv[0]))
+            p = os.path.join(base, "icons", icon_name)
+            if os.path.exists(p):
+                return p
+            # 3) Arbeitsverzeichnis (wenn build-exe von Projektroot aus)
+            p = os.path.join(os.path.abspath(os.curdir), "icons", icon_name)
+            if os.path.exists(p):
+                return p
+            # 4) Skript-Verzeichnis (python main.py)
+            p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons", icon_name)
+            if os.path.exists(p):
+                return p
+            return None
+
         self._icons_png = {}
         for iname in ("pfeil", "linie", "rechteck", "ellipse", "maske", "stempel", "marker", "foto", "datum"):
-            icon = None
-            # 1) Base64 aus icons_base64.py (kein --add-data nötig)
-            b64 = ICONS_BASE64.get(iname)
-            if b64:
-                try:
-                    data = base64.b64decode(b64)
-                    icon = tk.PhotoImage(data=data)
-                except Exception:
-                    icon = None
-            # 2) Fallback: icons/-Ordner (für Entwicklung ohne EXE)
-            if icon is None:
-                for base_dir in (
-                    getattr(sys, '_MEIPASS', None),
-                    os.path.dirname(os.path.abspath(sys.argv[0])),
-                    os.path.abspath(os.curdir),
-                    os.path.dirname(os.path.abspath(__file__)),
-                ):
-                    if base_dir:
-                        p = os.path.join(base_dir, "icons", f"{iname}.png")
-                        if os.path.exists(p):
-                            try:
-                                icon = tk.PhotoImage(file=p)
-                                break
-                            except Exception:
-                                continue
-            if icon:
-                self._icons_png[iname] = icon
+            path = _icon_path(iname)
+            if path:
+                self._icons_png[iname] = tk.PhotoImage(file=path)
             else:
-                print(f"Icon fehlt: {iname}")
+                print(f"Icon fehlt: {iname}.png in icons/")
 
         # ─── Toolbox links (flach, Icon + Text nebeneinander) ──
         self.toolbox = tk.Frame(self.root, bg=C["bg"], width=100)
