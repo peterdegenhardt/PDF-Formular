@@ -496,7 +496,7 @@ class App:
         self.rot_label.pack(side=tk.TOP)
         self.rot_scale = tk.Scale(rot_frame, from_=-90, to=90, orient=tk.HORIZONTAL,
                                    length=120, resolution=1,
-                                   bg=C["bg"], fg=C["text"], troughcolor=C["surface"],
+                                   bg=C["bg"], fg=C["text"], troughcolor=C["bg"],
                                    highlightbackground=C["bg"],
                                    activebackground=C["cyan"],
                                    sliderrelief=tk.FLAT, bd=0,
