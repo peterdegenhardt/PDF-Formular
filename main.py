@@ -489,12 +489,10 @@ class App:
         self._btn(self._tb, "Zurücksetzen", self._reset, C["red"], w=11)
 
         # --- Schieberegler für Rotation (-90° bis +90°) ---
-        rot_frame = tk.Frame(self._tb, bg=C["bg"])
-        rot_frame.pack(side=tk.LEFT, padx=4)
-        self.rot_label = tk.Label(rot_frame, text="0°", font=("Segoe UI", 8, "bold"),
+        self.rot_label = tk.Label(self._tb, text="0°", font=("Segoe UI", 8, "bold"),
                                   bg=C["bg"], fg=C["cyan"], width=3)
-        self.rot_label.pack(side=tk.TOP, pady=(0, 1))
-        self.rot_scale = tk.Scale(rot_frame, from_=-90, to=90, orient=tk.HORIZONTAL,
+        self.rot_label.pack(side=tk.LEFT, padx=(4, 0))
+        self.rot_scale = tk.Scale(self._tb, from_=-90, to=90, orient=tk.HORIZONTAL,
                                    length=120, resolution=1,
                                    bg=C["bg"], fg=C["text"], troughcolor=C["bg"],
                                    highlightbackground=C["bg"],
@@ -503,7 +501,7 @@ class App:
                                    showvalue=False, takefocus=0, width=14,
                                    sliderlength=20,
                                    command=self._on_rotation_slider)
-        self.rot_scale.pack(side=tk.BOTTOM)
+        self.rot_scale.pack(side=tk.LEFT, padx=(0, 4))
 
         # --- Seiten-Navigation (rechtsbündig) ---
         self.page_label = tk.Label(self._tb, text="Seite ? / ?", font=("Segoe UI",9,"bold"),
