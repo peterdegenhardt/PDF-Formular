@@ -442,7 +442,7 @@ class App:
         self.root.configure(bg=C["bg"])
         self._build_menus()
 
-        self._tb = tk.Frame(self.root, bg=C["bg"], height=38)
+        self._tb = tk.Frame(self.root, bg=C["bg"])
         self._tb.pack(fill=tk.X, padx=3, pady=(3,0))
         self._tb_children = []  # für apply_ui
 
@@ -490,17 +490,18 @@ class App:
 
         # --- Schieberegler für Rotation (-90° bis +90°) ---
         rot_frame = tk.Frame(self._tb, bg=C["bg"])
-        rot_frame.pack(side=tk.LEFT, padx=2)
+        rot_frame.pack(side=tk.LEFT, padx=4)
         self.rot_label = tk.Label(rot_frame, text="0°", font=("Segoe UI", 8, "bold"),
                                   bg=C["bg"], fg=C["cyan"], width=3)
-        self.rot_label.pack(side=tk.TOP)
+        self.rot_label.pack(side=tk.TOP, pady=(0, 1))
         self.rot_scale = tk.Scale(rot_frame, from_=-90, to=90, orient=tk.HORIZONTAL,
                                    length=120, resolution=1,
                                    bg=C["bg"], fg=C["text"], troughcolor=C["bg"],
                                    highlightbackground=C["bg"],
                                    activebackground=C["cyan"],
                                    sliderrelief=tk.FLAT, bd=0,
-                                   showvalue=False, takefocus=0,
+                                   showvalue=False, takefocus=0, width=14,
+                                   sliderlength=20,
                                    command=self._on_rotation_slider)
         self.rot_scale.pack(side=tk.BOTTOM)
 
