@@ -488,9 +488,21 @@ class App:
         # --- Reset ---
         self._btn(self._tb, "Zurücksetzen", self._reset, C["red"], w=11)
 
-        # --- 90° Drehung ---
-        self._btn(self._tb, "\u21ba", lambda: self._rotate_page(-90), C["cyan"], fg="#11111b")
-        self._btn(self._tb, "\u21bb", lambda: self._rotate_page(90), C["cyan"], fg="#11111b")
+        # --- Schieberegler für Rotation (-90° bis +90°) ---
+        rot_frame = tk.Frame(self._tb, bg=C["bg"])
+        rot_frame.pack(side=tk.LEFT, padx=2)
+        self.rot_label = tk.Label(rot_frame, text="0°", font=("Segoe UI", 8, "bold"),
+                                  bg=C["bg"], fg=C["cyan"], width=3)
+        self.rot_label.pack(side=tk.TOP)
+        self.rot_scale = tk.Scale(rot_frame, from_=-90, to=90, orient=tk.HORIZONTAL,
+                                   length=120, resolution=1,
+                                   bg=C["bg"], fg=C["text"], troughcolor=C["surface"],
+                                   highlightbackground=C["bg"],
+                                   activebackground=C["cyan"],
+                                   sliderrelief=tk.FLAT, bd=0,
+                                   showvalue=False, takefocus=0,
+                                   command=self._on_rotation_slider)
+        self.rot_scale.pack(side=tk.BOTTOM)
 
         # --- Seiten-Navigation (rechtsbündig) ---
         self.page_label = tk.Label(self._tb, text="Seite ? / ?", font=("Segoe UI",9,"bold"),
@@ -517,8 +529,6 @@ class App:
             "Zurücksetzen": "Alle ausgefüllten Werte löschen",
             "⬅": "Vorherige Seite",
             "➡": "Nächste Seite",
-            "↺": "Seite 90° gegen Uhrzeigersinn drehen",
-            "↻": "Seite 90° im Uhrzeigersinn drehen",
         }
         for child in self._tb_children:
             if isinstance(child, tk.Button) and child.cget("text") in TOOLTIPS:
@@ -804,6 +814,11 @@ class App:
         self.selected = None
         self._fit_zoom()
         self._render()
+        # Schieberegler auf aktuellen Rotationswert setzen
+        if hasattr(self, 'rot_scale') and hasattr(self, 'rot_label'):
+            current_rot = self.page_rotation.get(str(page), 0)
+            self.rot_scale.set(current_rot)
+            self.rot_label.config(text=f"{current_rot}°")
         self._status()
 
     def _prev_page(self):
@@ -827,6 +842,25 @@ class App:
         self._fit_zoom()
         self._render()
         self._status_text(f"Seite um {delta}° gedreht")
+
+    def _on_rotation_slider(self, val):
+        """Wird aufgerufen, wenn der Schieberegler bewegt wird."""
+        if not self.pdf_image:
+            self.rot_scale.set(0)
+            self.rot_label.config(text="0°")
+            return
+        key = str(self.current_page)
+        target = int(float(val))
+        cur = self.page_rotation.get(key, 0)
+        delta = target - cur
+        if delta == 0:
+            self.rot_label.config(text=f"{cur}°")
+            return
+        self.page_rotation[key] = target
+        self.pdf_image = self.pdf_image.rotate(-delta, expand=True, fillcolor=(255, 255, 255))
+        self._fit_zoom()
+        self._render()
+        self.rot_label.config(text=f"{target}°")
 
     # ═══════════════════════════════════════════
     # DIALOGE (Schrift, Farbschema, Allgemein, Einstellungen)
