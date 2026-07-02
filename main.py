@@ -840,7 +840,7 @@ class App:
         win = tk.Toplevel(self.root)
         win.title("Drehung")
         win.configure(bg=C["bg"])
-        win.geometry("300x120")
+        win.geometry("320x160")
         win.resizable(False, False)
         win.transient(self.root)
         win.grab_set()
@@ -851,22 +851,68 @@ class App:
         tk.Label(win, text="Seite frei drehen (-90° bis +90°)",
                  font=("Segoe UI", 9), bg=C["bg"], fg=C["text"]).pack(pady=(10, 5))
 
-        val_label = tk.Label(win, text=f"{cur_rot}°", font=("Segoe UI", 11, "bold"),
+        # Winkel-Anzeige
+        val_label = tk.Label(win, text=f"{cur_rot}°", font=("Segoe UI", 16, "bold"),
                              bg=C["bg"], fg=C["cyan"])
         val_label.pack()
 
-        scale = tk.Scale(win, from_=-90, to=90, orient=tk.HORIZONTAL,
-                         length=250, resolution=1,
-                         bg=C["bg"], fg=C["text"], troughcolor=C["bg"],
-                         highlightbackground=C["bg"],
-                         activebackground=C["cyan"],
-                         sliderrelief=tk.FLAT, bd=0,
-                         width=16, sliderlength=24)
-        scale.set(cur_rot)
-        scale.pack(pady=(2, 8))
+        # ─── Slider-Ersatz: Buttons +/- und Spinbox ───
+        slider_frame = tk.Frame(win, bg=C["bg"])
+        slider_frame.pack(pady=8)
+
+        def update_display(val):
+            val_label.config(text=f"{val}°")
+            spin_var.set(str(val))
+
+        def step_down():
+            v = current[0]
+            if v > -90:
+                current[0] = v - 1
+                update_display(current[0])
+
+        def step_up():
+            v = current[0]
+            if v < 90:
+                current[0] = v + 1
+                update_display(current[0])
+
+        current = [cur_rot]
+
+        # Minus-Button
+        tk.Button(slider_frame, text="−", font=("Segoe UI", 14, "bold"),
+                  command=step_down,
+                  bg=C["cyan"], fg="#11111b", relief=tk.FLAT,
+                  width=3, cursor="hand2", takefocus=0).pack(side=tk.LEFT, padx=2)
+
+        # Spinbox für Direkteingabe
+        spin_var = tk.StringVar(value=str(cur_rot))
+        spin = tk.Spinbox(slider_frame, from_=-90, to=90, textvariable=spin_var,
+                          width=5, font=("Segoe UI", 11),
+                          bg=C["bg"], fg=C["text"], buttonbackground=C["status"],
+                          justify=tk.CENTER, relief=tk.SUNKEN, bd=1)
+        spin.pack(side=tk.LEFT, padx=4)
+        def spin_changed():
+            try:
+                v = int(spin_var.get())
+                v = max(-90, min(90, v))
+                current[0] = v
+                update_display(v)
+            except ValueError:
+                pass
+        spin_var.trace_add("write", lambda *_: spin_changed())
+
+        # Plus-Button
+        tk.Button(slider_frame, text="+", font=("Segoe UI", 14, "bold"),
+                  command=step_up,
+                  bg=C["cyan"], fg="#11111b", relief=tk.FLAT,
+                  width=3, cursor="hand2", takefocus=0).pack(side=tk.LEFT, padx=2)
+
+        # ─── OK / Abbrechen ───
+        btn_frame = tk.Frame(win, bg=C["bg"])
+        btn_frame.pack(pady=(4, 10))
 
         def on_apply():
-            target = scale.get()
+            target = current[0]
             delta = target - self.page_rotation.get(key, 0)
             if delta != 0:
                 self.page_rotation[key] = target
@@ -876,8 +922,6 @@ class App:
                 self.rot_label.config(text=f"{target}°")
             win.destroy()
 
-        btn_frame = tk.Frame(win, bg=C["bg"])
-        btn_frame.pack()
         tk.Button(btn_frame, text="Übernehmen", command=on_apply,
                   bg=C["green"], fg="#11111b", relief=tk.FLAT, padx=20, pady=4,
                   cursor="hand2", takefocus=0).pack(side=tk.LEFT, padx=5)
