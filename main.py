@@ -3124,7 +3124,7 @@ class App:
 
         rx, ry = self.root.winfo_x(), self.root.winfo_y()
         rw, rh = self.root.winfo_width(), self.root.winfo_height()
-        ww, wh = 340, 300
+        ww, wh = 420, 380
         win.geometry(f"{ww}x{wh}+{rx+rw//2-ww//2}+{ry+rh//2-wh//2}")
 
         tk.Label(win, text="Stempel auswählen:", bg=C["bg"], fg=C["text"],
