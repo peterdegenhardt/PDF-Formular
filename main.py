@@ -573,24 +573,19 @@ class App:
             if isinstance(child, tk.Button) and child.cget("text") in TOOLTIPS:
                 self._attach_tooltip(child, TOOLTIPS[child.cget("text")])
         # ─── Icons laden ────────────────────────────────────────
-        # Strategie: Base64-Daten aus icons_base64.py temporär entpacken
-        # und dann per file= laden (zuverlässiger auf Windows)
+        # Strategie: 1) Base64 (in EXE eingebaut), 2) icons/-Ordner
         self._icons_png = {}
-        _icons_tmp = tempfile.mkdtemp(prefix="pdf_icons_")
         for iname in ("pfeil", "linie", "rechteck", "ellipse", "maske", "stempel", "marker", "foto", "datum"):
             icon = None
+            # 1) Base64 aus icons_base64.py (kein --add-data nötig)
             b64 = ICONS_BASE64.get(iname)
             if b64:
                 try:
                     data = base64.b64decode(b64)
-                    tmp_path = os.path.join(_icons_tmp, f"{iname}.png")
-                    with open(tmp_path, "wb") as f:
-                        f.write(data)
-                    icon = tk.PhotoImage(file=tmp_path)
-                except Exception as e:
-                    print(f"Icon {iname}: Base64-Fehler ({e}), versuche Dateisystem…")
+                    icon = tk.PhotoImage(data=data)
+                except Exception:
                     icon = None
-            # Fallback: icons/-Ordner (für Entwicklung ohne EXE)
+            # 2) Fallback: icons/-Ordner (für Entwicklung ohne EXE)
             if icon is None:
                 for base_dir in (
                     getattr(sys, '_MEIPASS', None),
