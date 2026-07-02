@@ -501,9 +501,7 @@ class App:
             if target == cur:
                 return
             self.page_rotation[key] = target
-            self.pdf_image = self.pdf_image.rotate(-(target - cur), expand=True, fillcolor=(255, 255, 255))
-            self._fit_zoom()
-            self._render()
+            self._reapply_rotation(key)
             self.rot_var.set(str(target))
             self.rot_label.config(text=f"{target}°")
 
@@ -532,9 +530,7 @@ class App:
                     self.rot_var.set(str(cur))
                     return
                 self.page_rotation[key] = target
-                self.pdf_image = self.pdf_image.rotate(-(target - cur), expand=True, fillcolor=(255, 255, 255))
-                self._fit_zoom()
-                self._render()
+                self._reapply_rotation(key)
                 self.rot_label.config(text=f"{target}°")
             except ValueError:
                 key = str(self.current_page)
@@ -883,6 +879,31 @@ class App:
         self._fit_zoom()
         self._render()
         self._status_text(f"Seite um {delta}° gedreht")
+
+    def _reapply_rotation(self, key):
+        """Lädt das Original der Seite neu und wendet die gespeicherte Rotation an."""
+        if not self.pdf_path:
+            return
+        # Original aus page_originals Cache oder frisch aus PDF laden
+        if not hasattr(self, 'page_originals'):
+            self.page_originals = {}
+        if key not in self.page_originals:
+            try:
+                pdf = pdfium.PdfDocument(self.pdf_path)
+                bm = pdf[int(key)].render(scale=int(300/72))
+                self.page_originals[key] = bm.to_pil()
+                pdf.close()
+            except Exception:
+                return
+        # Original holen und rotieren
+        orig = self.page_originals[key]
+        rot = self.page_rotation.get(key, 0)
+        if rot:
+            self.pdf_image = orig.rotate(-rot, expand=True, fillcolor=(255, 255, 255))
+        else:
+            self.pdf_image = orig.copy()
+        self._fit_zoom()
+        self._render()
 
     # ═══════════════════════════════════════════
     # DIALOGE (Schrift, Farbschema, Allgemein, Einstellungen)
